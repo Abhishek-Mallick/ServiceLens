@@ -37,56 +37,21 @@ export default async function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            AI integration
-            <Badge variant={aiEnabled ? 'success' : 'secondary'}>{aiEnabled ? 'Connected' : 'Disabled'}</Badge>
+            AI-powered analysis
+            <Badge variant={aiEnabled ? 'success' : 'secondary'}>{aiEnabled ? 'Enabled' : 'Unavailable'}</Badge>
           </CardTitle>
-          <CardDescription>OpenRouter powers the service analysis, topology inference, and regression summaries.</CardDescription>
+          <CardDescription>
+            Service analysis, topology inference, and regression summaries.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          {aiEnabled ? (
-            <div className="text-sm">
-              Using model <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{process.env.OPENROUTER_MODEL ?? 'default free model'}</span>.
-              Free-tier OpenRouter models are called for every service analysis.
-            </div>
-          ) : (
-            <div className="space-y-3 text-sm">
-              <p className="text-muted-foreground">
-                Set <code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">OPENROUTER_API_KEY</code> in your <code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">.env</code> to enable live AI-powered analysis. Without it, ServiceLens falls back to the local heuristic analyzer.
-              </p>
-              <ul className="list-disc list-inside text-muted-foreground space-y-1 text-xs">
-                <li>Get a free key at openrouter.ai</li>
-                <li>Free-tier models include Llama 3.3 70B and Mistral Small 3.1</li>
-                <li>Seeded demo data will render fully even without a key</li>
-              </ul>
-            </div>
-          )}
+          <p className="text-sm text-muted-foreground">
+            {aiEnabled
+              ? 'AI-powered insights are active across your workspace.'
+              : 'AI insights are temporarily unavailable. Heuristic analysis is being used instead.'}
+          </p>
         </CardContent>
       </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Infrastructure</CardTitle>
-          <CardDescription>Local services detected</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm">
-          <Row label="Database" value="SQLite (dev.db)" status="connected" />
-          <Row label="Auth" value="NextAuth (credentials)" status="connected" />
-          <Row label="Redis / BullMQ" value="Optional — uses in-process queue" status="optional" />
-          <Row label="Socket.IO" value="Polling every 30s in dashboard" status="connected" />
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-function Row({ label, value, status }: { label: string; value: string; status: 'connected' | 'optional' }) {
-  return (
-    <div className="flex items-center justify-between rounded-md border border-border/60 p-3">
-      <div>
-        <div className="text-sm font-medium">{label}</div>
-        <div className="text-xs text-muted-foreground">{value}</div>
-      </div>
-      <Badge variant={status === 'connected' ? 'success' : 'secondary'}>{status}</Badge>
     </div>
   );
 }
