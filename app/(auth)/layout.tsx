@@ -10,11 +10,11 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15 text-primary">
             <Network className="h-5 w-5" />
           </div>
-          MeshRegress
+          ServiceLens
         </Link>
         {children}
         <p className="mt-10 text-center text-xs text-muted-foreground">
-          See everything. Test everything. Break nothing.
+          Infer contracts. Map topology. Run regressions.
         </p>
       </div>
     </div>

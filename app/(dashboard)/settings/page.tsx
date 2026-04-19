@@ -51,7 +51,7 @@ export default async function SettingsPage() {
           ) : (
             <div className="space-y-3 text-sm">
               <p className="text-muted-foreground">
-                Set <code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">OPENROUTER_API_KEY</code> in your <code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">.env</code> to enable live AI-powered analysis. Without it, MeshRegress falls back to the local heuristic analyzer.
+                Set <code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">OPENROUTER_API_KEY</code> in your <code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">.env</code> to enable live AI-powered analysis. Without it, ServiceLens falls back to the local heuristic analyzer.
               </p>
               <ul className="list-disc list-inside text-muted-foreground space-y-1 text-xs">
                 <li>Get a free key at openrouter.ai</li>

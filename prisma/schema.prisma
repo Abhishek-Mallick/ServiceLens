@@ -1,4 +1,4 @@
-// MeshRegress Prisma schema.
+// ServiceLens Prisma schema.
 // Neon Postgres. DATABASE_URL = pooled (pgbouncer) connection for the app runtime;
 // DIRECT_URL = direct (unpooled) connection used by prisma migrate / db push / seed.
 

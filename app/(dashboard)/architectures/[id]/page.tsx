@@ -77,7 +77,7 @@ export default async function ArchitectureOverview({ params }: { params: { id: s
             {architecture.services.length === 0 && (
               <div className="rounded-md border border-dashed border-border/60 p-6 text-center">
                 <div className="text-sm font-medium">Add your first service</div>
-                <p className="text-xs text-muted-foreground mt-1">Register a Git repo and MeshRegress will analyze it.</p>
+                <p className="text-xs text-muted-foreground mt-1">Register a Git repo and ServiceLens will analyze it.</p>
                 <div className="mt-3"><AddServiceButton architectureId={architecture.id} /></div>
               </div>
             )}

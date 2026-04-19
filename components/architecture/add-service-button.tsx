@@ -62,7 +62,7 @@ export function AddServiceButton({ architectureId }: { architectureId: string })
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Register a service</DialogTitle>
-            <DialogDescription>MeshRegress will shallow-clone the repo and analyze it.</DialogDescription>
+            <DialogDescription>ServiceLens will shallow-clone the repo and analyze it.</DialogDescription>
           </DialogHeader>
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">

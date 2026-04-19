@@ -40,7 +40,7 @@ export default async function ArchitecturesPage() {
             </div>
             <h3 className="text-lg font-semibold">No architectures yet</h3>
             <p className="text-sm text-muted-foreground mt-1 max-w-md">
-              Register your first microservice architecture by adding a Git repo per service. MeshRegress will map everything automatically.
+              Register your first microservice architecture by adding a Git repo per service. ServiceLens will map everything automatically.
             </p>
             <Button asChild className="mt-4"><Link href="/architectures/new">Create architecture</Link></Button>
           </CardContent>

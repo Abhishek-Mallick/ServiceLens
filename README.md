@@ -1,6 +1,6 @@
-# MeshRegress
+# ServiceLens
 
-AI-powered microservice architecture **regression testing** and **health monitoring** platform. Register a mesh of Git-backed services, let the analyzer infer their APIs and event flows, explore the live topology, run end-to-end regressions with animated playback, and watch health roll up in real time.
+Infers API contracts and event flows from Git-backed microservices, maps live topology, and runs end-to-end regression tests with animated playback and real-time health rollups.
 
 Built to be **cheap and fast to run** — Neon Postgres (free tier) for storage, OpenRouter's free tier for AI (with a full heuristic fallback), simulated health checks so you can play with the full experience without deploying anything.
 
@@ -55,7 +55,7 @@ npm run dev
 
 The seed creates a demo user and a fully-populated architecture:
 
-- **Email:** `demo@meshregress.com`
+- **Email:** `demo@servicelens.com`
 - **Password:** `demo123`
 
 Seeded data:

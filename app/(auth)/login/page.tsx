@@ -12,7 +12,7 @@ import { Github, Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('demo@meshregress.com');
+  const [email, setEmail] = useState('demo@servicelens.com');
   const [password, setPassword] = useState('demo123');
   const [loading, setLoading] = useState(false);
 

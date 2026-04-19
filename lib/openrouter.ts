@@ -18,7 +18,7 @@ async function callOpenRouter(prompt: string, system: string): Promise<string> {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
       'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-      'X-Title': 'MeshRegress',
+      'X-Title': 'ServiceLens',
     },
     body: JSON.stringify({
       model,

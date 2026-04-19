@@ -9,9 +9,9 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: 'MeshRegress — See everything. Test everything. Break nothing.',
+  title: 'ServiceLens — Git-native microservice topology & regression testing',
   description:
-    'AI-powered microservice architecture regression testing and health monitoring.',
+    'Infers API contracts and event flows from Git-backed microservices, maps live topology, and runs end-to-end regression tests with animated playback and real-time health rollups.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

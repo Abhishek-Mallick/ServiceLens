@@ -8,7 +8,7 @@ test.describe('Authentication', () => {
     // Demo credentials are pre-filled by the form — just submit.
     const email = page.getByLabel(/email/i);
     const password = page.getByLabel(/password/i);
-    await expect(email).toHaveValue('demo@meshregress.com');
+    await expect(email).toHaveValue('demo@servicelens.com');
     await expect(password).toHaveValue('demo123');
 
     await page.getByRole('button', { name: /^sign in$/i }).click();

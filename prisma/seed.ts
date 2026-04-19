@@ -23,7 +23,7 @@ interface ServiceSeed {
 const services: ServiceSeed[] = [
   {
     name: 'API Gateway',
-    repoUrl: 'https://github.com/meshregress-demo/api-gateway',
+    repoUrl: 'https://github.com/servicelens-demo/api-gateway',
     language: 'TypeScript',
     framework: 'Express',
     summary: 'Edge router that authenticates and dispatches requests to downstream microservices.',
@@ -46,7 +46,7 @@ const services: ServiceSeed[] = [
   },
   {
     name: 'User Service',
-    repoUrl: 'https://github.com/meshregress-demo/user-service',
+    repoUrl: 'https://github.com/servicelens-demo/user-service',
     language: 'TypeScript',
     framework: 'NestJS',
     summary: 'Owns user identity, profile, and authentication sessions.',
@@ -67,7 +67,7 @@ const services: ServiceSeed[] = [
   },
   {
     name: 'Product Service',
-    repoUrl: 'https://github.com/meshregress-demo/product-service',
+    repoUrl: 'https://github.com/servicelens-demo/product-service',
     language: 'Java',
     framework: 'Spring Boot',
     summary: 'Canonical source of product catalog entries and pricing.',
@@ -86,7 +86,7 @@ const services: ServiceSeed[] = [
   },
   {
     name: 'Order Service',
-    repoUrl: 'https://github.com/meshregress-demo/order-service',
+    repoUrl: 'https://github.com/servicelens-demo/order-service',
     language: 'TypeScript',
     framework: 'Express',
     summary: 'Creates, cancels, and tracks customer orders.',
@@ -111,7 +111,7 @@ const services: ServiceSeed[] = [
   },
   {
     name: 'Payment Service',
-    repoUrl: 'https://github.com/meshregress-demo/payment-service',
+    repoUrl: 'https://github.com/servicelens-demo/payment-service',
     language: 'Python',
     framework: 'FastAPI',
     summary: 'Authorizes, captures, and reconciles payments against orders.',
@@ -133,7 +133,7 @@ const services: ServiceSeed[] = [
   },
   {
     name: 'Inventory Service',
-    repoUrl: 'https://github.com/meshregress-demo/inventory-service',
+    repoUrl: 'https://github.com/servicelens-demo/inventory-service',
     language: 'Go',
     framework: 'Standard',
     summary: 'Maintains stock levels and reserves inventory for orders.',
@@ -155,7 +155,7 @@ const services: ServiceSeed[] = [
   },
   {
     name: 'Notification Service',
-    repoUrl: 'https://github.com/meshregress-demo/notification-service',
+    repoUrl: 'https://github.com/servicelens-demo/notification-service',
     language: 'TypeScript',
     framework: 'Node.js',
     summary: 'Delivers email and SMS notifications triggered by mesh events.',
@@ -176,7 +176,7 @@ const services: ServiceSeed[] = [
   },
   {
     name: 'Shipping Service',
-    repoUrl: 'https://github.com/meshregress-demo/shipping-service',
+    repoUrl: 'https://github.com/servicelens-demo/shipping-service',
     language: 'Java',
     framework: 'Spring Boot',
     summary: 'Schedules carrier pickups and tracks shipment status.',
@@ -197,7 +197,7 @@ const services: ServiceSeed[] = [
   },
   {
     name: 'Analytics Service',
-    repoUrl: 'https://github.com/meshregress-demo/analytics-service',
+    repoUrl: 'https://github.com/servicelens-demo/analytics-service',
     language: 'Python',
     framework: 'FastAPI',
     summary: 'Aggregates every mesh event into a warehouse for reporting.',
@@ -220,7 +220,7 @@ const services: ServiceSeed[] = [
   },
   {
     name: 'Search Service',
-    repoUrl: 'https://github.com/meshregress-demo/search-service',
+    repoUrl: 'https://github.com/servicelens-demo/search-service',
     language: 'TypeScript',
     framework: 'Node.js',
     summary: 'Keeps the product search index in sync with catalog and inventory changes.',
@@ -260,15 +260,15 @@ function mulberry(seed: number): () => number {
 }
 
 async function main() {
-  console.log('🌱 Seeding MeshRegress demo data…');
+  console.log('🌱 Seeding ServiceLens demo data…');
 
   // User
   const passwordHash = await bcrypt.hash('demo123', 10);
   const user = await prisma.user.upsert({
-    where: { email: 'demo@meshregress.com' },
+    where: { email: 'demo@servicelens.com' },
     update: {},
     create: {
-      email: 'demo@meshregress.com',
+      email: 'demo@servicelens.com',
       name: 'Demo User',
       password: passwordHash,
     },
@@ -441,7 +441,7 @@ async function main() {
       data: {
         architectureId: architecture.id,
         status: failed === 0 ? 'completed' : 'completed',
-        triggeredBy: 'demo@meshregress.com',
+        triggeredBy: 'demo@servicelens.com',
         startedAt,
         completedAt,
         totalSteps,
@@ -490,7 +490,7 @@ async function main() {
     }
   }
 
-  console.log('✅ Seeded user=demo@meshregress.com / demo123');
+  console.log('✅ Seeded user=demo@servicelens.com / demo123');
   console.log(`   architecture=${architecture.name}, ${createdServices.length} services`);
   console.log(`   ${healthRecords.length} health records, ${runConfigs.length} regression runs`);
 }

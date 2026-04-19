@@ -18,7 +18,7 @@ export function Sidebar() {
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/15 text-primary">
           <Network className="h-4 w-4" />
         </div>
-        <span className="text-base font-semibold tracking-tight">MeshRegress</span>
+        <span className="text-base font-semibold tracking-tight">ServiceLens</span>
       </div>
       <nav className="flex-1 space-y-1 p-3">
         {nav.map((item) => {

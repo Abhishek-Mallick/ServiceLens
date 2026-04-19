@@ -32,7 +32,7 @@ export interface ExtractedFile {
 }
 
 export async function cloneShallow(repoUrl: string, branch = 'main'): Promise<string> {
-  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'meshregress-'));
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'servicelens-'));
   const git = simpleGit();
   await git.clone(repoUrl, tmpDir, ['--depth', '1', '--branch', branch]);
   return tmpDir;
