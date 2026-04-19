@@ -1,0 +1,130 @@
+// MeshRegress Prisma schema.
+// Neon Postgres. DATABASE_URL = pooled (pgbouncer) connection for the app runtime;
+// DIRECT_URL = direct (unpooled) connection used by prisma migrate / db push / seed.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id            String         @id @default(cuid())
+  name          String?
+  email         String         @unique
+  password      String?
+  image         String?
+  githubId      String?        @unique
+  architectures Architecture[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Architecture {
+  id             String          @id @default(cuid())
+  name           String
+  description    String?
+  userId         String
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  services       Service[]
+  regressionRuns RegressionRun[]
+  status         String          @default("draft") // draft, analyzing, ready, error
+  topologyData   String? // JSON; cached topology graph data
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model Service {
+  id              String               @id @default(cuid())
+  name            String
+  repoUrl         String
+  branch          String               @default("main")
+  architectureId  String
+  architecture    Architecture         @relation(fields: [architectureId], references: [id], onDelete: Cascade)
+  analysisStatus  String               @default("pending") // pending, cloning, analyzing, completed, error
+  analysisResult  String? // JSON: full AI analysis result
+  language        String?
+  framework       String?
+  summary         String?
+  producesEvents  String? // JSON array
+  consumesEvents  String? // JSON array
+  exposesApis     String? // JSON array
+  consumesApis    String? // JSON array
+  databases       String? // JSON array
+  kafkaTopics     String? // JSON array
+  healthEndpoint  String?
+  healthStatus    String               @default("unknown") // healthy, degraded, down, unknown
+  lastHealthCheck DateTime?
+  dependencies    ServiceDependency[]  @relation("dependentService")
+  dependents      ServiceDependency[]  @relation("dependencyService")
+  healthHistory   HealthRecord[]
+  testSteps       RegressionTestStep[]
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+}
+
+model ServiceDependency {
+  id           String   @id @default(cuid())
+  dependentId  String
+  dependent    Service  @relation("dependentService", fields: [dependentId], references: [id], onDelete: Cascade)
+  dependencyId String
+  dependency   Service  @relation("dependencyService", fields: [dependencyId], references: [id], onDelete: Cascade)
+  type         String // kafka | rest | grpc | database | event
+  details      String? // JSON: topic, endpoint, etc
+  createdAt    DateTime @default(now())
+
+  @@unique([dependentId, dependencyId, type])
+}
+
+model HealthRecord {
+  id           String   @id @default(cuid())
+  serviceId    String
+  service      Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  status       String // healthy | degraded | down
+  responseTime Int?
+  details      String? // JSON
+  checkedAt    DateTime @default(now())
+
+  @@index([serviceId, checkedAt])
+}
+
+model RegressionRun {
+  id             String               @id @default(cuid())
+  architectureId String
+  architecture   Architecture         @relation(fields: [architectureId], references: [id], onDelete: Cascade)
+  status         String               @default("pending") // pending | running | completed | failed
+  triggeredBy    String?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  totalSteps     Int                  @default(0)
+  passedSteps    Int                  @default(0)
+  failedSteps    Int                  @default(0)
+  steps          RegressionTestStep[]
+  summary        String? // JSON: AI summary
+  createdAt      DateTime             @default(now())
+}
+
+model RegressionTestStep {
+  id             String        @id @default(cuid())
+  runId          String
+  run            RegressionRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  serviceId      String
+  service        Service       @relation(fields: [serviceId], references: [id])
+  stepOrder      Int
+  name           String
+  description    String?
+  type           String // api_call | event_produce | event_consume | db_write | db_read | health_check
+  status         String        @default("pending") // pending | running | passed | failed | skipped
+  input          String? // JSON
+  expectedOutput String? // JSON
+  actualOutput   String? // JSON
+  errorMessage   String?
+  duration       Int?
+  executedAt     DateTime?
+
+  @@index([runId, stepOrder])
+}

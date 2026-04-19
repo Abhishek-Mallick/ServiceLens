@@ -1,0 +1,14 @@
+version: '3.9'
+
+# Optional Redis for BullMQ. Postgres is hosted on Neon — no local container needed.
+# The app also runs with an in-process queue if Redis is not set.
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+
+volumes:
+  redis_data:
