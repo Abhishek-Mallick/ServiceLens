@@ -59,6 +59,7 @@ model Service {
   healthEndpoint  String?
   healthStatus    String               @default("unknown") // healthy, degraded, down, unknown
   lastHealthCheck DateTime?
+  simulated       Boolean              @default(false) // true when health/data is generated, not from real probes
   dependencies    ServiceDependency[]  @relation("dependentService")
   dependents      ServiceDependency[]  @relation("dependencyService")
   healthHistory   HealthRecord[]
@@ -87,6 +88,7 @@ model HealthRecord {
   status       String // healthy | degraded | down
   responseTime Int?
   details      String? // JSON
+  simulated    Boolean  @default(false)
   checkedAt    DateTime @default(now())
 
   @@index([serviceId, checkedAt])
@@ -105,7 +107,28 @@ model RegressionRun {
   failedSteps    Int                  @default(0)
   steps          RegressionTestStep[]
   summary        String? // JSON: AI summary
+  simulated      Boolean              @default(false)
   createdAt      DateTime             @default(now())
+}
+
+// Job — generic async work queue. v1 is in-process; later phases swap in Inngest/BullMQ
+// without changing this row contract.
+model Job {
+  id          String    @id @default(cuid())
+  type        String // probe, analyze, regression, rca, fix_pr, notify, chaos
+  payload     String // JSON
+  status      String    @default("pending") // pending | running | completed | failed | cancelled
+  result      String? // JSON
+  error       String?
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(3)
+  scheduledAt DateTime  @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([status, scheduledAt])
+  @@index([type, status])
 }
 
 model RegressionTestStep {

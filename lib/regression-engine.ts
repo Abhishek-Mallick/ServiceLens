@@ -138,6 +138,7 @@ export async function executeRegressionRun(
       startedAt: new Date(),
       triggeredBy: opts.triggeredBy ?? 'manual',
       totalSteps: allSteps.length,
+      simulated: true, // current engine uses Math.random — flip to false once real probes drive results
     },
   });
 

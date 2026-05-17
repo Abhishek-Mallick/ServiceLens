@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/shared/status-badge';
+import { SimulatedBadge } from '@/components/shared/simulated-badge';
 import { Activity, Boxes, CheckCircle2, GitBranch, Plus, Sparkles, Zap } from 'lucide-react';
 import { formatRelative } from '@/lib/utils';
 import { HealthOverviewChart } from '@/components/dashboard/health-overview-chart';
@@ -107,6 +108,7 @@ export default async function DashboardHome() {
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-success">{r.passedSteps} passed</span>
                     {r.failedSteps > 0 && <span className="text-xs text-destructive">{r.failedSteps} failed</span>}
+                    {r.simulated && <SimulatedBadge />}
                     <StatusBadge status={r.status} />
                   </div>
                 </Link>
@@ -168,7 +170,10 @@ export default async function DashboardHome() {
                   </div>
                   <div className="text-xs text-muted-foreground">{s.framework ?? s.language ?? '—'} · {formatRelative(s.updatedAt)}</div>
                 </div>
-                <StatusBadge status={s.healthStatus} />
+                <div className="flex items-center gap-2">
+                  {s.simulated && <SimulatedBadge />}
+                  <StatusBadge status={s.healthStatus} />
+                </div>
               </div>
             ))}
             {recentServices.length === 0 && <div className="text-sm text-muted-foreground">No services yet.</div>}

@@ -5,6 +5,7 @@ export interface HealthCheckResult {
   status: 'healthy' | 'degraded' | 'down';
   responseTime: number | null;
   details: Record<string, unknown> | null;
+  simulated: boolean;
 }
 
 interface ServiceLike {
@@ -25,12 +26,14 @@ export async function checkService(service: ServiceLike): Promise<HealthCheckRes
         status: res.ok ? 'healthy' : res.status >= 500 ? 'down' : 'degraded',
         responseTime,
         details: { statusCode: res.status, live: true },
+        simulated: false,
       };
     } catch (err) {
       return {
         status: 'down',
         responseTime: null,
         details: { error: err instanceof Error ? err.message : 'Connection failed', live: true },
+        simulated: false,
       };
     }
   }
@@ -57,6 +60,7 @@ export function simulateHealth(service: ServiceLike): HealthCheckResult {
     status,
     responseTime,
     details: { simulated: true, baseline },
+    simulated: true,
   };
 }
 
@@ -67,6 +71,7 @@ export async function recordHealth(serviceId: string, result: HealthCheckResult)
       status: result.status,
       responseTime: result.responseTime,
       details: result.details ? stringify(result.details) : null,
+      simulated: result.simulated,
     },
   });
   await prisma.service.update({
@@ -74,6 +79,7 @@ export async function recordHealth(serviceId: string, result: HealthCheckResult)
     data: {
       healthStatus: result.status,
       lastHealthCheck: new Date(),
+      simulated: result.simulated,
     },
   });
 }

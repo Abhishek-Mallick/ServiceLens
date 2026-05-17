@@ -33,6 +33,7 @@ export default async function HealthPage({ params }: { params: { id: string } })
     healthStatus: s.healthStatus,
     healthEndpoint: s.healthEndpoint,
     lastHealthCheck: s.lastHealthCheck?.toISOString() ?? null,
+    simulated: s.simulated,
     history: s.healthHistory
       .slice()
       .reverse()

@@ -1,6 +1,7 @@
 'use client';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatusBadge } from '@/components/shared/status-badge';
+import { SimulatedBadge } from '@/components/shared/simulated-badge';
 import { cn, formatRelative } from '@/lib/utils';
 import type { ServiceHealthData } from './health-dashboard';
 import { LineChart, Line, ResponsiveContainer, YAxis } from 'recharts';
@@ -40,7 +41,10 @@ export function ServiceHealthCard({ service, selected, onClick }: Props) {
             <div className="text-sm font-semibold truncate">{service.name}</div>
             <div className="text-xs text-muted-foreground truncate">{service.framework ?? service.language ?? '—'}</div>
           </div>
-          <StatusBadge status={service.healthStatus} />
+          <div className="flex flex-col items-end gap-1">
+            <StatusBadge status={service.healthStatus} />
+            {service.simulated && <SimulatedBadge />}
+          </div>
         </div>
         <div className="flex items-center gap-3 text-xs mb-3">
           <div>

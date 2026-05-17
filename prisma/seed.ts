@@ -23,7 +23,7 @@ interface ServiceSeed {
 const services: ServiceSeed[] = [
   {
     name: 'API Gateway',
-    repoUrl: 'https://github.com/servicelens-demo/api-gateway',
+    repoUrl: 'https://github.com/microservices-demo/front-end',
     language: 'TypeScript',
     framework: 'Express',
     summary: 'Edge router that authenticates and dispatches requests to downstream microservices.',
@@ -46,7 +46,7 @@ const services: ServiceSeed[] = [
   },
   {
     name: 'User Service',
-    repoUrl: 'https://github.com/servicelens-demo/user-service',
+    repoUrl: 'https://github.com/microservices-demo/user',
     language: 'TypeScript',
     framework: 'NestJS',
     summary: 'Owns user identity, profile, and authentication sessions.',
@@ -67,7 +67,7 @@ const services: ServiceSeed[] = [
   },
   {
     name: 'Product Service',
-    repoUrl: 'https://github.com/servicelens-demo/product-service',
+    repoUrl: 'https://github.com/microservices-demo/catalogue',
     language: 'Java',
     framework: 'Spring Boot',
     summary: 'Canonical source of product catalog entries and pricing.',
@@ -86,7 +86,7 @@ const services: ServiceSeed[] = [
   },
   {
     name: 'Order Service',
-    repoUrl: 'https://github.com/servicelens-demo/order-service',
+    repoUrl: 'https://github.com/microservices-demo/orders',
     language: 'TypeScript',
     framework: 'Express',
     summary: 'Creates, cancels, and tracks customer orders.',
@@ -111,7 +111,7 @@ const services: ServiceSeed[] = [
   },
   {
     name: 'Payment Service',
-    repoUrl: 'https://github.com/servicelens-demo/payment-service',
+    repoUrl: 'https://github.com/microservices-demo/payment',
     language: 'Python',
     framework: 'FastAPI',
     summary: 'Authorizes, captures, and reconciles payments against orders.',
@@ -133,7 +133,7 @@ const services: ServiceSeed[] = [
   },
   {
     name: 'Inventory Service',
-    repoUrl: 'https://github.com/servicelens-demo/inventory-service',
+    repoUrl: 'https://github.com/microservices-demo/carts',
     language: 'Go',
     framework: 'Standard',
     summary: 'Maintains stock levels and reserves inventory for orders.',
@@ -155,7 +155,7 @@ const services: ServiceSeed[] = [
   },
   {
     name: 'Notification Service',
-    repoUrl: 'https://github.com/servicelens-demo/notification-service',
+    repoUrl: 'https://github.com/microservices-demo/queue-master',
     language: 'TypeScript',
     framework: 'Node.js',
     summary: 'Delivers email and SMS notifications triggered by mesh events.',
@@ -176,7 +176,7 @@ const services: ServiceSeed[] = [
   },
   {
     name: 'Shipping Service',
-    repoUrl: 'https://github.com/servicelens-demo/shipping-service',
+    repoUrl: 'https://github.com/microservices-demo/shipping',
     language: 'Java',
     framework: 'Spring Boot',
     summary: 'Schedules carrier pickups and tracks shipment status.',
@@ -197,7 +197,7 @@ const services: ServiceSeed[] = [
   },
   {
     name: 'Analytics Service',
-    repoUrl: 'https://github.com/servicelens-demo/analytics-service',
+    repoUrl: 'https://github.com/microservices-demo/load-test',
     language: 'Python',
     framework: 'FastAPI',
     summary: 'Aggregates every mesh event into a warehouse for reporting.',
@@ -220,7 +220,7 @@ const services: ServiceSeed[] = [
   },
   {
     name: 'Search Service',
-    repoUrl: 'https://github.com/servicelens-demo/search-service',
+    repoUrl: 'https://github.com/microservices-demo/registry',
     language: 'TypeScript',
     framework: 'Node.js',
     summary: 'Keeps the product search index in sync with catalog and inventory changes.',
@@ -315,6 +315,7 @@ async function main() {
         healthEndpoint: s.healthEndpoint,
         healthStatus: health,
         lastHealthCheck: new Date(),
+        simulated: true,
         analysisResult: stringify({ ...s, summary: s.summary }),
       },
     });
@@ -351,6 +352,7 @@ async function main() {
     status: string;
     responseTime: number;
     details: string;
+    simulated: boolean;
     checkedAt: Date;
   }> = [];
 
@@ -389,6 +391,7 @@ async function main() {
         status,
         responseTime: rt,
         details: stringify({ simulated: true }),
+        simulated: true,
         checkedAt: new Date(t),
       });
     }
@@ -447,6 +450,7 @@ async function main() {
         totalSteps,
         passedSteps: passed,
         failedSteps: failed,
+        simulated: true,
         summary: stringify({
           summary:
             failed === 0

@@ -25,6 +25,7 @@ export interface ServiceHealthData {
   healthStatus: string;
   healthEndpoint: string | null;
   lastHealthCheck: string | null;
+  simulated: boolean;
   history: HealthEntry[];
 }
 
@@ -66,6 +67,7 @@ export function HealthDashboard({ architectureId, initialServices }: { architect
         healthStatus: string;
         healthEndpoint: string | null;
         lastHealthCheck: string | null;
+        simulated?: boolean;
         healthHistory: Array<{ status: string; responseTime: number | null; checkedAt: string }>;
       }) => ({
         id: s.id,
@@ -75,6 +77,7 @@ export function HealthDashboard({ architectureId, initialServices }: { architect
         healthStatus: s.healthStatus,
         healthEndpoint: s.healthEndpoint,
         lastHealthCheck: s.lastHealthCheck,
+        simulated: s.simulated ?? false,
         history: (s.healthHistory ?? []).slice().reverse(),
       }));
       setServices(updated);
