@@ -494,9 +494,110 @@ async function main() {
     }
   }
 
+  // ── Phase 1 demo: probes, alert rules, one prior incident ────────────────
+  console.log('  · seeding probes + alert rules + one resolved incident…');
+
+  // One simulated HTTP probe per service (target is the placeholder healthEndpoint
+  // appended to a fake host — probe runner won't fire automatically; user can
+  // hit "Run now" or "Refresh" in the UI to exercise the real probe path).
+  for (const s of createdServices) {
+    await prisma.probe.create({
+      data: {
+        serviceId: s.id,
+        name: `HTTP ${s.healthEndpoint ?? '/health'}`,
+        type: 'http',
+        target: `https://example.invalid${s.healthEndpoint ?? '/health'}`,
+        intervalSec: 30,
+        timeoutSec: 5,
+        expectStatus: 200,
+        enabled: true,
+      },
+    });
+  }
+
+  // A few starter rules
+  const paymentSvc = svcByName.get('Payment Service');
+  const searchSvc = svcByName.get('Search Service');
+
+  await prisma.alertRule.create({
+    data: {
+      architectureId: architecture.id,
+      name: 'Any service down',
+      description: 'Open a critical incident when any service reports down.',
+      condition: stringify({ kind: 'status_eq', status: 'down' }),
+      windowSec: 300,
+      forDurationSec: 60,
+      severity: 'critical',
+      channels: stringify(['inapp', 'email']),
+    },
+  });
+
+  if (paymentSvc) {
+    await prisma.alertRule.create({
+      data: {
+        architectureId: architecture.id,
+        serviceId: paymentSvc.id,
+        name: 'Payment p95 latency > 800ms',
+        description: 'Payment is latency-sensitive; warn before it degrades.',
+        condition: stringify({ kind: 'p95_latency_gt', thresholdMs: 800 }),
+        windowSec: 600,
+        forDurationSec: 120,
+        severity: 'warning',
+        channels: stringify(['inapp']),
+      },
+    });
+  }
+
+  if (searchSvc) {
+    await prisma.alertRule.create({
+      data: {
+        architectureId: architecture.id,
+        serviceId: searchSvc.id,
+        name: 'Search consecutive down × 3',
+        condition: stringify({ kind: 'consecutive_down', count: 3 }),
+        windowSec: 900,
+        forDurationSec: 0,
+        severity: 'critical',
+        channels: stringify(['inapp', 'slack']),
+      },
+    });
+  }
+
+  // A historical resolved incident for the demo
+  if (paymentSvc) {
+    const openedAt = new Date(now - 3 * 24 * 60 * 60 * 1000);
+    const ackedAt = new Date(openedAt.getTime() + 4 * 60 * 1000);
+    const resolvedAt = new Date(openedAt.getTime() + 22 * 60 * 1000);
+    const inc = await prisma.incident.create({
+      data: {
+        architectureId: architecture.id,
+        serviceId: paymentSvc.id,
+        title: 'Payment p95 latency spiked above 800ms',
+        severity: 'warning',
+        status: 'resolved',
+        source: 'rule',
+        summary: 'p95 latency on Payment crossed the 800ms threshold for ~20 minutes after a downstream Stripe rate-limit kicked in.',
+        resolution: 'Backed off retry policy from 5 → 2 and bumped client-side cache TTL from 30s to 5m. Latency returned to baseline within minutes.',
+        openedAt,
+        ackedAt,
+        resolvedAt,
+        simulated: true,
+      },
+    });
+    await prisma.incidentEvent.createMany({
+      data: [
+        { incidentId: inc.id, type: 'opened', at: openedAt, payload: stringify({ severity: 'warning' }) },
+        { incidentId: inc.id, type: 'acked', at: ackedAt, byUserId: user.id },
+        { incidentId: inc.id, type: 'comment', at: new Date(openedAt.getTime() + 8 * 60 * 1000), byUserId: user.id, payload: stringify({ text: 'Stripe dashboard shows we are getting throttled. Investigating.' }) },
+        { incidentId: inc.id, type: 'resolved', at: resolvedAt, byUserId: user.id, payload: stringify({ resolution: 'retry backoff + cache bump' }) },
+      ],
+    });
+  }
+
   console.log('✅ Seeded user=demo@servicelens.com / demo123');
   console.log(`   architecture=${architecture.name}, ${createdServices.length} services`);
   console.log(`   ${healthRecords.length} health records, ${runConfigs.length} regression runs`);
+  console.log('   + ' + createdServices.length + ' probes, 3 alert rules, 1 resolved incident');
 }
 
 main()

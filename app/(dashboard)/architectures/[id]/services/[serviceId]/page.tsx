@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { parseJson, formatRelative } from '@/lib/utils';
 import { ArrowLeft, Database, Radio } from 'lucide-react';
+import { ProbesPanel, type ProbeRow } from '@/components/probes/probes-panel';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +22,7 @@ export default async function ServiceDetailPage({ params }: { params: { id: stri
       dependencies: { include: { dependency: true } },
       dependents: { include: { dependent: true } },
       healthHistory: { orderBy: { checkedAt: 'desc' }, take: 20 },
+      probes: { orderBy: { createdAt: 'asc' } },
     },
   });
   if (!service) notFound();
@@ -31,6 +33,17 @@ export default async function ServiceDetailPage({ params }: { params: { id: stri
   const calls = parseJson<Array<{ service: string; method: string; path: string }>>(service.consumesApis, []);
   const dbs = parseJson<Array<{ type: string; name: string }>>(service.databases, []);
   const topics = parseJson<string[]>(service.kafkaTopics, []);
+  const probeRows: ProbeRow[] = service.probes.map((p) => ({
+    id: p.id,
+    name: p.name,
+    type: p.type,
+    target: p.target,
+    intervalSec: p.intervalSec,
+    timeoutSec: p.timeoutSec,
+    expectStatus: p.expectStatus,
+    enabled: p.enabled,
+    lastRunAt: p.lastRunAt?.toISOString() ?? null,
+  }));
 
   return (
     <div className="p-6 lg:p-8 space-y-6 max-w-6xl">
@@ -52,6 +65,8 @@ export default async function ServiceDetailPage({ params }: { params: { id: stri
           <div className="mt-2">Last check: {formatRelative(service.lastHealthCheck)}</div>
         </div>
       </div>
+
+      <ProbesPanel serviceId={service.id} initialProbes={probeRows} />
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>

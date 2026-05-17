@@ -2,10 +2,11 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
-import { Bell, LogOut, Moon, Search, Sun } from 'lucide-react';
+import { LogOut, Moon, Search, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NotificationBell } from '@/components/shared/notification-bell';
 
 interface HeaderProps {
   user: { name?: string | null; email?: string | null; image?: string | null };
@@ -41,9 +42,7 @@ export function Header({ user }: HeaderProps) {
       <Button variant="ghost" size="icon" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
         {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
       </Button>
-      <Button variant="ghost" size="icon">
-        <Bell className="h-4 w-4" />
-      </Button>
+      <NotificationBell />
       <div className="flex items-center gap-3 border-l border-border/60 pl-4">
         <div className="hidden text-right sm:block">
           <div className="text-sm font-medium leading-tight">{user.name ?? 'Demo User'}</div>

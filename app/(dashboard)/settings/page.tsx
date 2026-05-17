@@ -5,10 +5,12 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { isAIEnabled } from '@/lib/openrouter';
+import { NotificationPrefs } from '@/components/settings/notification-prefs';
 
 export default async function SettingsPage() {
   const session = await getServerSession(authOptions);
   const aiEnabled = isAIEnabled();
+  const emailEnabled = !!process.env.RESEND_API_KEY;
 
   return (
     <div className="p-6 lg:p-8 max-w-3xl space-y-6">
@@ -31,6 +33,21 @@ export default async function SettingsPage() {
             <Label>Email</Label>
             <Input value={session?.user?.email ?? ''} readOnly />
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            Notifications
+            <Badge variant={emailEnabled ? 'success' : 'secondary'}>{emailEnabled ? 'Email enabled' : 'Email in console-only mode'}</Badge>
+          </CardTitle>
+          <CardDescription>
+            In-app, email (Resend), and Slack — choose per-user severity floor and quiet hours. Slack webhooks are configured per architecture on its Alerts page.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <NotificationPrefs />
         </CardContent>
       </Card>
 

@@ -20,6 +20,10 @@ model User {
   image         String?
   githubId      String?        @unique
   architectures Architecture[]
+  assignedIncidents Incident[] @relation("incidentAssignee")
+  incidentEvents IncidentEvent[]
+  notifications Notification[]
+  notificationPref UserNotificationPref?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 }
@@ -32,8 +36,12 @@ model Architecture {
   user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   services       Service[]
   regressionRuns RegressionRun[]
+  alertRules     AlertRule[]
+  incidents      Incident[]
   status         String          @default("draft") // draft, analyzing, ready, error
   topologyData   String? // JSON; cached topology graph data
+  slackWebhookUrl String? // Phase 2: per-architecture Slack incoming webhook
+  notificationsEmail String? // optional override; defaults to architecture owner email
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 }
@@ -64,6 +72,9 @@ model Service {
   dependents      ServiceDependency[]  @relation("dependencyService")
   healthHistory   HealthRecord[]
   testSteps       RegressionTestStep[]
+  probes          Probe[]
+  alertRules      AlertRule[]
+  incidents       Incident[]
   createdAt       DateTime             @default(now())
   updatedAt       DateTime             @updatedAt
 }
@@ -136,7 +147,7 @@ model RegressionTestStep {
   runId          String
   run            RegressionRun @relation(fields: [runId], references: [id], onDelete: Cascade)
   serviceId      String
-  service        Service       @relation(fields: [serviceId], references: [id])
+  service        Service       @relation(fields: [serviceId], references: [id], onDelete: Cascade)
   stepOrder      Int
   name           String
   description    String?
@@ -150,4 +161,137 @@ model RegressionTestStep {
   executedAt     DateTime?
 
   @@index([runId, stepOrder])
+}
+
+// Probe — declarative health probe configuration. One service can carry many.
+model Probe {
+  id             String    @id @default(cuid())
+  serviceId      String
+  service        Service   @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  name           String
+  type           String // http | tcp | ping | cmd
+  target         String // URL for http; host:port for tcp/ping; shell for cmd
+  intervalSec    Int       @default(30)
+  timeoutSec     Int       @default(5)
+  expectStatus   Int? // for http; default 2xx ok
+  expectBodyRegex String?
+  headers        String? // JSON
+  enabled        Boolean   @default(true)
+  lastRunAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([serviceId, enabled])
+}
+
+// AlertRule — when to open an incident. Conditions are JSON DSL.
+model AlertRule {
+  id             String       @id @default(cuid())
+  architectureId String
+  architecture   Architecture @relation(fields: [architectureId], references: [id], onDelete: Cascade)
+  serviceId      String?
+  service        Service?     @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  name           String
+  description    String?
+  // JSON: { kind: 'status_eq'|'p95_latency_gt'|'error_rate_gt'|'consecutive_down'|'regression_failed', ...params }
+  condition      String
+  windowSec      Int          @default(300)
+  forDurationSec Int          @default(60)
+  severity       String       @default("warning") // info | warning | critical
+  channels       String       @default("[\"inapp\"]") // JSON string[]: inapp|email|slack|webhook
+  enabled        Boolean      @default(true)
+  incidents      Incident[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([architectureId, enabled])
+}
+
+// Incident — fires open when a rule matches for >= forDurationSec; auto-resolves
+// when the underlying condition has cleared for 2x the window.
+model Incident {
+  id             String          @id @default(cuid())
+  architectureId String
+  architecture   Architecture    @relation(fields: [architectureId], references: [id], onDelete: Cascade)
+  ruleId         String?
+  rule           AlertRule?      @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+  serviceId      String?
+  service        Service?        @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  title          String
+  severity       String          @default("warning") // info | warning | critical
+  status         String          @default("open") // open | acknowledged | mitigated | resolved
+  source         String          @default("rule") // rule | synthetic | manual
+  summary        String?
+  rcaMarkdown    String?
+  rcaModel       String?
+  resolution     String?
+  assigneeId     String?
+  assignee       User?           @relation("incidentAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  openedAt       DateTime        @default(now())
+  ackedAt        DateTime?
+  resolvedAt     DateTime?
+  simulated      Boolean         @default(false)
+  events         IncidentEvent[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([architectureId, status, openedAt])
+  @@index([ruleId, serviceId, status])
+}
+
+model IncidentEvent {
+  id         String   @id @default(cuid())
+  incidentId String
+  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  type       String // opened | acked | resolved | status_change | comment | rca_started | rca_completed | fix_pr_generated | notification_sent | assigned
+  payload    String? // JSON
+  byUserId   String?
+  byUser     User?    @relation(fields: [byUserId], references: [id], onDelete: SetNull)
+  at         DateTime @default(now())
+
+  @@index([incidentId, at])
+}
+
+// In-app notification feed (bell icon).
+model Notification {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind       String // incident_opened | incident_acked | incident_resolved | fix_pr_ready
+  title      String
+  body       String?
+  href       String? // deep link into the app
+  severity   String?  @default("info")
+  incidentId String? // optional foreign reference (not enforced for simplicity)
+  readAt     DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([userId, readAt, createdAt])
+}
+
+// Delivery audit log — one row per dispatched notification per channel.
+model NotificationLog {
+  id         String   @id @default(cuid())
+  incidentId String?
+  channel    String // inapp | email | slack | webhook | console
+  status     String // sent | failed | skipped
+  recipient  String? // email address, slack channel, etc
+  template   String? // IncidentOpened, IncidentResolved, ...
+  payload    String? // JSON snapshot of what was sent
+  error      String?
+  at         DateTime @default(now())
+
+  @@index([incidentId, at])
+  @@index([channel, status])
+}
+
+model UserNotificationPref {
+  userId          String  @id
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailEnabled    Boolean @default(true)
+  slackEnabled    Boolean @default(true)
+  minSeverity     String  @default("warning") // info | warning | critical — below this is suppressed for email/slack
+  quietHoursStart Int? // 0..23, local-time hour; null = always on
+  quietHoursEnd   Int? // 0..23
+  updatedAt       DateTime @updatedAt
 }

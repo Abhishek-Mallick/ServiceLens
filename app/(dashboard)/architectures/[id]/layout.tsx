@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { ArchitectureTabs } from '@/components/architecture/architecture-tabs';
 import { Button } from '@/components/ui/button';
+import { TriggerSyntheticButton } from '@/components/incidents/trigger-synthetic-button';
 import { ArrowLeft } from 'lucide-react';
 
 export default async function ArchitectureLayout({
@@ -20,7 +21,15 @@ export default async function ArchitectureLayout({
 
   const architecture = await prisma.architecture.findFirst({
     where: { id: params.id, userId: session.user.id },
-    include: { _count: { select: { services: true, regressionRuns: true } } },
+    include: {
+      _count: {
+        select: {
+          services: true,
+          regressionRuns: true,
+          incidents: { where: { status: { in: ['open', 'acknowledged'] } } },
+        },
+      },
+    },
   });
   if (!architecture) notFound();
 
@@ -42,9 +51,14 @@ export default async function ArchitectureLayout({
                 <span>{architecture._count.services} services</span>
                 <span>·</span>
                 <span>{architecture._count.regressionRuns} runs</span>
+                <span>·</span>
+                <Link href={`/architectures/${architecture.id}/incidents`} className={architecture._count.incidents > 0 ? 'text-amber-400 hover:underline' : 'hover:underline'}>
+                  {architecture._count.incidents} open incident{architecture._count.incidents === 1 ? '' : 's'}
+                </Link>
               </div>
             </div>
             <div className="flex gap-2">
+              <TriggerSyntheticButton architectureId={architecture.id} />
               <Button asChild variant="outline" size="sm">
                 <Link href={`/architectures/${architecture.id}/regression`}>Run regression</Link>
               </Button>

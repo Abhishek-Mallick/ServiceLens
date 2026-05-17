@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
 import { authOptions } from '@/lib/auth';
-import { checkAll } from '@/lib/health-monitor';
+import { probeArchitecture } from '@/lib/probes';
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
@@ -35,6 +35,6 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
   });
   if (!architecture) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const results = await checkAll(params.id);
+  const results = await probeArchitecture(params.id);
   return NextResponse.json({ results });
 }
