@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { Resend } from 'resend';
 import { render } from '@react-email/render';
 import { IncidentEmail } from '../emails/incident-email';
@@ -26,7 +27,7 @@ export const emailChannel: NotificationChannel = {
     const ackUrl = msg.ackToken
       ? `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/api/notify/ack?token=${encodeURIComponent(msg.ackToken)}`
       : null;
-    const html = await render(IncidentEmail({ msg, ackUrl }));
+    const html = await render(<IncidentEmail msg={msg} ackUrl={ackUrl} />);
     const results: DeliveryResult[] = [];
     for (const to of recipients) {
       try {

@@ -1,20 +1,35 @@
 import { prisma } from '@/lib/prisma';
 import { stringify, parseJson } from '@/lib/utils';
-import type { ChannelKind, NotificationMessage, Severity } from './types';
+import type { ChannelKind, NotificationChannel, NotificationMessage, Severity } from './types';
 import { inappChannel } from './channels/inapp';
-import { emailChannel } from './channels/email';
 import { slackChannel } from './channels/slack';
 import { consoleChannel } from './channels/console';
 import { signAckToken } from './tokens';
 
 const SEVERITY_RANK: Record<Severity, number> = { info: 0, warning: 1, critical: 2 };
 
-const REGISTRY: Partial<Record<ChannelKind, typeof inappChannel>> = {
+// Eagerly available channels. The email channel pulls in @react-email and the Resend
+// SDK; loading it at import-time bloats every server bundle and (more importantly)
+// drags React peer dependencies through paths Next.js doesn't expect, which can
+// surface as `useContext` null errors during page render. So we lazy-load it.
+const REGISTRY: Partial<Record<ChannelKind, NotificationChannel>> = {
   inapp: inappChannel,
-  email: emailChannel,
   slack: slackChannel,
   console: consoleChannel,
 };
+
+async function getChannel(kind: ChannelKind): Promise<NotificationChannel | null> {
+  if (REGISTRY[kind]) return REGISTRY[kind]!;
+  if (kind === 'email') {
+    // Skip the dynamic import entirely when the key isn't set — keeps Resend +
+    // @react-email out of the bundle for users running in console-only mode.
+    if (!process.env.RESEND_API_KEY) return null;
+    const { emailChannel } = await import('./channels/email');
+    REGISTRY.email = emailChannel;
+    return emailChannel;
+  }
+  return null;
+}
 
 // Resolve the channel set, recipients, and dispatch. The `channels` arg comes
 // from AlertRule.channels JSON; we always tack on `inapp` for the owner and
@@ -106,7 +121,7 @@ export async function dispatch(input: DispatchInput): Promise<void> {
   ordered.push('console');
 
   for (const kind of ordered) {
-    const ch = REGISTRY[kind];
+    const ch = await getChannel(kind);
     if (!ch) continue;
     if (!ch.available()) {
       await prisma.notificationLog.create({
