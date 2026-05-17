@@ -2,6 +2,7 @@ import { prisma } from './prisma';
 import { stringify } from './utils';
 import { dispatch, parseChannels } from './notify';
 import type { Severity } from './notify';
+import { snapshotForIncident } from './logs';
 
 export interface OpenIncidentInput {
   architectureId: string;
@@ -50,6 +51,21 @@ export async function openIncident(input: OpenIncidentInput): Promise<{ id: stri
       byUserId: input.byUserId ?? null,
     },
   });
+
+  // Snapshot logs from the affected service + 1-hop neighbors. Fire-and-forget;
+  // never block the probe loop on log capture.
+  void snapshotForIncident(input.serviceId ?? null)
+    .then((snapshot) =>
+      prisma.incidentEvent.create({
+        data: {
+          incidentId: incident.id,
+          type: 'log_snapshot',
+          payload: stringify(snapshot),
+        },
+      })
+    )
+    .catch((err) => console.error('[incidents] log snapshot failed:', err));
+
   // Notify (fire-and-forget — we don't want a flaky webhook to break the probe loop).
   void notifyForIncident(incident.id, 'IncidentOpened').catch((err) =>
     console.error('[incidents] dispatch IncidentOpened failed:', err)

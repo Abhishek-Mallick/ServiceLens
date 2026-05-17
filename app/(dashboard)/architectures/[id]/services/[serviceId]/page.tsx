@@ -9,6 +9,7 @@ import { StatusBadge } from '@/components/shared/status-badge';
 import { parseJson, formatRelative } from '@/lib/utils';
 import { ArrowLeft, Database, Radio } from 'lucide-react';
 import { ProbesPanel, type ProbeRow } from '@/components/probes/probes-panel';
+import { IngestTokenPanel } from '@/components/logs/ingest-token-panel';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,7 +67,10 @@ export default async function ServiceDetailPage({ params }: { params: { id: stri
         </div>
       </div>
 
-      <ProbesPanel serviceId={service.id} initialProbes={probeRows} />
+      <div className="grid gap-4 md:grid-cols-2">
+        <ProbesPanel serviceId={service.id} initialProbes={probeRows} />
+        <IngestTokenPanel serviceId={service.id} />
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>

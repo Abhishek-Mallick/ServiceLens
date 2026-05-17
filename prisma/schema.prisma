@@ -68,6 +68,7 @@ model Service {
   healthStatus    String               @default("unknown") // healthy, degraded, down, unknown
   lastHealthCheck DateTime?
   simulated       Boolean              @default(false) // true when health/data is generated, not from real probes
+  ingestToken     String?              @unique // bearer for HEC-style log ingestion (POST /api/services/:id/logs)
   dependencies    ServiceDependency[]  @relation("dependentService")
   dependents      ServiceDependency[]  @relation("dependencyService")
   healthHistory   HealthRecord[]
@@ -75,6 +76,7 @@ model Service {
   probes          Probe[]
   alertRules      AlertRule[]
   incidents       Incident[]
+  logs            LogEntry[]
   createdAt       DateTime             @default(now())
   updatedAt       DateTime             @updatedAt
 }
@@ -283,6 +285,23 @@ model NotificationLog {
 
   @@index([incidentId, at])
   @@index([channel, status])
+}
+
+model LogEntry {
+  id        String   @id @default(cuid())
+  serviceId String
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  level     String // debug | info | warn | error
+  message   String
+  fields    String? // JSON map of extra structured fields
+  traceId   String?
+  spanId    String?
+  simulated Boolean  @default(false)
+  at        DateTime @default(now())
+
+  @@index([serviceId, at])
+  @@index([serviceId, level, at])
+  @@index([traceId])
 }
 
 model UserNotificationPref {

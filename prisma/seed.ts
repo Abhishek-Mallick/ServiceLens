@@ -2,6 +2,8 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { stringify } from '../lib/utils';
 import { buildTopology } from '../lib/topology-builder';
+import { generateEntries } from '../lib/log-generator';
+import { generateIngestToken } from '../lib/logs';
 
 const prisma = new PrismaClient();
 
@@ -316,6 +318,7 @@ async function main() {
         healthStatus: health,
         lastHealthCheck: new Date(),
         simulated: true,
+        ingestToken: generateIngestToken(),
         analysisResult: stringify({ ...s, summary: s.summary }),
       },
     });
@@ -494,6 +497,27 @@ async function main() {
     }
   }
 
+  // ── Phase 3 demo: ~1 hour of synthetic logs per service ──────────────────
+  console.log('  · generating synthetic logs (~80 per service × 1 hour window)…');
+  const logRows: Array<{ serviceId: string; level: string; message: string; fields: string | null; traceId: string | null; spanId: string | null; simulated: boolean; at: Date }> = [];
+  for (const svc of createdServices) {
+    const status = (svc.healthStatus as 'healthy' | 'degraded' | 'down' | 'unknown') ?? 'healthy';
+    const entries = generateEntries(svc.name, status, 3600, 80);
+    for (const e of entries) {
+      logRows.push({
+        serviceId: svc.id,
+        level: e.level ?? 'info',
+        message: e.message,
+        fields: e.fields ? stringify(e.fields) : null,
+        traceId: e.traceId ?? null,
+        spanId: e.spanId ?? null,
+        simulated: true,
+        at: e.at instanceof Date ? e.at : new Date(e.at!),
+      });
+    }
+  }
+  await prisma.logEntry.createMany({ data: logRows });
+
   // ── Phase 1 demo: probes, alert rules, one prior incident ────────────────
   console.log('  · seeding probes + alert rules + one resolved incident…');
 
@@ -598,6 +622,7 @@ async function main() {
   console.log(`   architecture=${architecture.name}, ${createdServices.length} services`);
   console.log(`   ${healthRecords.length} health records, ${runConfigs.length} regression runs`);
   console.log('   + ' + createdServices.length + ' probes, 3 alert rules, 1 resolved incident');
+  console.log('   + ' + logRows.length + ' synthetic log entries');
 }
 
 main()

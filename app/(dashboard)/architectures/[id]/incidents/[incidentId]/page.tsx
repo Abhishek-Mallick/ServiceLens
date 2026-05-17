@@ -9,7 +9,8 @@ import { SimulatedBadge } from '@/components/shared/simulated-badge';
 import { SeverityBadge } from '@/components/incidents/severity-badge';
 import { IncidentActions } from '@/components/incidents/incident-actions';
 import { formatRelative, parseJson } from '@/lib/utils';
-import { ArrowLeft, MessageSquare, AlertCircle, CheckCircle2, Check, UserPlus, Bot, FileText } from 'lucide-react';
+import { ArrowLeft, MessageSquare, AlertCircle, CheckCircle2, Check, UserPlus, Bot, FileText, ScrollText } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +25,11 @@ const eventIcon: Record<string, React.ComponentType<{ className?: string }>> = {
   fix_pr_generated: FileText,
   notification_sent: MessageSquare,
   status_change: AlertCircle,
+  log_snapshot: ScrollText,
 };
+
+interface LogSnapshotEntry { id: string; service: string; level: string; message: string; at: string }
+interface LogSnapshot { windowSec?: number; services?: string[]; logs?: LogSnapshotEntry[]; note?: string }
 
 export default async function IncidentDetailPage({ params }: { params: { id: string; incidentId: string } }) {
   const session = await getServerSession(authOptions);
@@ -43,6 +48,11 @@ export default async function IncidentDetailPage({ params }: { params: { id: str
     },
   });
   if (!incident) notFound();
+
+  const snapshotEvent = [...incident.events].reverse().find((e) => e.type === 'log_snapshot');
+  const snapshot: LogSnapshot | null = snapshotEvent?.payload
+    ? parseJson<LogSnapshot>(snapshotEvent.payload, { logs: [] })
+    : null;
 
   return (
     <div className="p-6 lg:p-8 space-y-6 max-w-5xl">
@@ -65,6 +75,33 @@ export default async function IncidentDetailPage({ params }: { params: { id: str
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <div className="space-y-4">
+          {snapshot && snapshot.logs && snapshot.logs.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <ScrollText className="h-4 w-4 text-amber-400" /> Correlated logs (snapshot at open)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-md border border-border/60 bg-black/40 font-mono text-[12px] max-h-72 overflow-y-auto">
+                  {snapshot.logs.map((l) => (
+                    <div key={l.id} className="grid grid-cols-[80px_50px_120px_1fr] gap-2 px-3 py-1 border-b border-border/30">
+                      <span className="text-muted-foreground tabular-nums">{new Date(l.at).toLocaleTimeString()}</span>
+                      <span className={cn('uppercase', {
+                        'text-rose-400': l.level === 'error',
+                        'text-amber-400': l.level === 'warn',
+                        'text-sky-400': l.level === 'info',
+                      })}>{l.level}</span>
+                      <span className="text-muted-foreground truncate">{l.service}</span>
+                      <span className="break-words">{l.message}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="text-[10px] text-muted-foreground mt-2">{snapshot.logs.length} warn/error entries from {snapshot.services?.length ?? 0} service(s) · captured at incident open</div>
+              </CardContent>
+            </Card>
+          )}
+
           {incident.rcaMarkdown && (
             <Card>
               <CardHeader className="pb-2">

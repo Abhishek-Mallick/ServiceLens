@@ -11,6 +11,7 @@ export function ArchitectureTabs({ architectureId }: { architectureId: string })
     { href: `/architectures/${architectureId}/services`, label: 'Services' },
     { href: `/architectures/${architectureId}/regression`, label: 'Regression' },
     { href: `/architectures/${architectureId}/health`, label: 'Health' },
+    { href: `/architectures/${architectureId}/logs`, label: 'Logs' },
     { href: `/architectures/${architectureId}/incidents`, label: 'Incidents' },
     { href: `/architectures/${architectureId}/alerts`, label: 'Alerts' },
   ];
