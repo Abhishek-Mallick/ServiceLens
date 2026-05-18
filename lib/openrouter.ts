@@ -1,42 +1,58 @@
 import type { AIAnalysisResult, RegressionFlow } from './types';
+import { pickKey, markFailed, isRateLimited, hasOpenRouterKeys } from './openrouter-keys';
 
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
 export function isAIEnabled(): boolean {
-  return !!process.env.OPENROUTER_API_KEY;
+  return hasOpenRouterKeys();
 }
 
+// Rotates through OPENROUTER_API_KEYS; cools rate-limited keys and retries
+// with the next one. Throws if every key in the pool is exhausted — the
+// caller (analyze flow) catches and falls back to `heuristicAnalyze`.
 async function callOpenRouter(prompt: string, system: string): Promise<string> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) throw new Error('OPENROUTER_API_KEY not configured');
+  if (!hasOpenRouterKeys()) throw new Error('OPENROUTER_API_KEY(S) not configured');
 
   const model = process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.3-70b-instruct:free';
 
-  const res = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-      'X-Title': 'ServiceLens',
-    },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: 'system', content: system },
-        { role: 'user', content: prompt },
-      ],
-      temperature: 0.1,
-      response_format: { type: 'json_object' },
-    }),
-  });
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const apiKey = pickKey();
+    if (!apiKey) throw new Error('All OpenRouter keys are cooling down');
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`OpenRouter error ${res.status}: ${text}`);
+    const res = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+        'X-Title': 'ServiceLens',
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 0.1,
+        response_format: { type: 'json_object' },
+      }),
+    });
+
+    if (res.status === 429 || res.status >= 500) {
+      const text = await res.text().catch(() => '');
+      if (isRateLimited(res.status, text) || res.status >= 500) {
+        markFailed(apiKey);
+        continue; // rotate
+      }
+    }
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`OpenRouter error ${res.status}: ${text}`);
+    }
+    const data = await res.json();
+    return data.choices[0].message.content;
   }
-  const data = await res.json();
-  return data.choices[0].message.content;
+  throw new Error('All OpenRouter keys exhausted');
 }
 
 function safeParseJson<T>(raw: string): T {

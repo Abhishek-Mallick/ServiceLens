@@ -114,7 +114,7 @@ Every external service is optional. The app announces what's enabled in the **Se
 
 ## Environment
 
-The complete reference lives in `.env.example`. Highlights:
+**Step-by-step "where do I get this value?" walkthrough lives in [`docs/env_get.md`](./docs/env_get.md).** The full reference is in `.env.example`. Highlights:
 
 ```bash
 # Required
@@ -125,8 +125,8 @@ NEXTAUTH_SECRET
 GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET
 GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET
 
-# Optional AI
-OPENROUTER_API_KEY
+# Optional AI — comma-separated rotating pool (legacy singular still works)
+OPENROUTER_API_KEYS="sk-or-aaa…,sk-or-bbb…,sk-or-ccc…"
 OPENROUTER_MODEL   # defaults to a :free model
 
 # Optional notifications
@@ -158,9 +158,13 @@ npm run test:e2e         # playwright test (needs `npx playwright install chromi
 
 ### Cron in production
 
-Hook `GET /api/cron/tick` to Vercel Cron (free tier supports 1 daily cron on Hobby; upgrade for sub-day cadences) or any external scheduler. Set `CRON_SECRET` and pass `Authorization: Bearer $CRON_SECRET`.
+Hook `GET /api/cron/tick` to a scheduler. See **[`docs/deploy_vercel.md`](./docs/deploy_vercel.md)** for the full Vercel deploy guide, including the four cron options (Vercel Cron, cron-job.org, GitHub Actions, self-hosted worker) and the two honest deployment caveats (SSE realtime needs Redis pub/sub for cross-instance fan-out; the Git analyzer expects a `git` binary at runtime).
 
-For self-hosted deployments, run `npm run worker` as a separate process — it ticks at `WORKER_INTERVAL` seconds, drains the `Job` queue, and runs due chaos schedules.
+The tick endpoint does two things every invocation: drains due `ChaosSchedule` rows + drains the `Job` queue. If you don't configure chaos schedules, you don't *strictly* need cron — manual "Run now" works without it.
+
+Set `CRON_SECRET` and pass `Authorization: Bearer $CRON_SECRET`. A starter `vercel.json` is included.
+
+For self-hosted deployments, `npm run worker` ticks at `WORKER_INTERVAL` seconds and does the same work.
 
 ---
 
