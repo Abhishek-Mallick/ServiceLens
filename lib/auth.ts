@@ -46,14 +46,29 @@ export const authOptions: NextAuthOptions = {
   pages: { signIn: '/login' },
   providers,
   callbacks: {
+    // The OAuth `user.id` on first sign-in is the *provider's* account id
+    // (GitHub's numeric id, Google's `sub`). Our Prisma User row has its own
+    // cuid as the primary key — and that's what every FK in the schema
+    // references. We resolve to the DB id by email on the first JWT issue,
+    // then cache it on the token so subsequent requests skip the lookup.
     async jwt({ token, user }) {
-      if (user) token.id = (user as { id: string }).id;
+      if (user?.email) {
+        const db = await prisma.user.findUnique({ where: { email: user.email }, select: { id: true } });
+        if (db) token.id = db.id;
+        else token.id = (user as { id?: string }).id;
+      } else if (!token.id && token.email) {
+        // Defensive: legacy tokens without `id` — fill it from the DB.
+        const db = await prisma.user.findUnique({ where: { email: token.email as string }, select: { id: true } });
+        if (db) token.id = db.id;
+      }
       return token;
     },
     async session({ session, token }) {
       if (session.user && token.id) (session.user as { id?: string }).id = token.id as string;
       return session;
     },
+    // Upsert the Prisma User row *before* the JWT callback runs so the
+    // `findUnique(byEmail)` above always finds a match.
     async signIn({ user, account }) {
       if (!user.email) return true;
       if (account?.provider === 'github') {
