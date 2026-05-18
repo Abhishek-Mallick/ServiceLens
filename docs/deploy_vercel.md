@@ -62,19 +62,17 @@ Every invocation runs two things:
 
 ### Option A — Vercel Cron (cleanest, free tier OK)
 
-Create `vercel.json` at the repo root:
+The repo ships a `vercel.json` with a **once-daily** cron:
 
 ```json
-{
-  "crons": [
-    { "path": "/api/cron/tick", "schedule": "*/5 * * * *" }
-  ]
-}
+{ "crons": [ { "path": "/api/cron/tick", "schedule": "0 9 * * *" } ] }
 ```
 
-On Vercel's **Hobby** plan: 1 cron job, runs at the cadence above. On **Pro**: up to 100 crons at any cadence.
+**Hobby tier limitation:** Vercel rejects sub-daily cron expressions on Hobby with `"Hobby accounts are limited to daily cron jobs"`. The shipped `0 9 * * *` (once a day at 09:00 UTC) deploys cleanly. **Pro** unlocks arbitrary cadence — bump it to `*/5 * * * *` for proper chaos-drill granularity.
 
-Vercel Cron automatically sends an `Authorization: Bearer $CRON_SECRET` header **if** `CRON_SECRET` is set in the project env. Set it.
+**Recommendation for Hobby:** leave Vercel Cron as the daily heartbeat *and* add an external scheduler below for sub-daily cadence. Or skip Vercel Cron and use only Option B / C.
+
+Vercel Cron automatically sends `Authorization: Bearer $CRON_SECRET` **if** `CRON_SECRET` is set in the project env. Set it.
 
 ### Option B — cron-job.org (works on any tier)
 

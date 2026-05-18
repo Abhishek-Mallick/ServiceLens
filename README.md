@@ -108,7 +108,7 @@ Every external service is optional. The app announces what's enabled in the **Se
 | **Slack webhooks** | Free | Per-architecture incident posting with Block Kit + magic-link ack button |
 | **GitHub OAuth** | Free | "Continue with GitHub" on the login page |
 | **Google OAuth** | Free | "Continue with Google" on the login page |
-| **Vercel Cron** | Free tier (1 cron, 1 daily run on Hobby) | Triggers `/api/cron/tick` for chaos drills + job queue. Or run `npm run worker` |
+| **Vercel Cron** | Hobby: 1 daily-only cron. Pro: any cadence. | Daily heartbeat for `/api/cron/tick` (already in `vercel.json`). For sub-daily chaos drills, pair with cron-job.org or run `npm run worker` |
 
 ---
 
