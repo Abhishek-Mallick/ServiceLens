@@ -1,23 +1,11 @@
 import { test, expect } from '@playwright/test';
-
-async function signIn(page: import('@playwright/test').Page) {
-  await page.goto('/login');
-  await page.getByRole('button', { name: /^sign in$/i }).click();
-  await page.waitForURL(/\/dashboard\/?$/, { timeout: 15_000 });
-}
+import { loginAsDemo, openSeededArchitecture } from './_helpers';
 
 test.describe('Topology view', () => {
   test('seeded architecture renders a React Flow topology with service nodes', async ({ page }) => {
-    await signIn(page);
-    await page.goto('/architectures');
-
-    // Click into the seeded architecture.
-    await page.getByText(/e-commerce platform/i).first().click();
-    await page.waitForURL(/\/architectures\/[\w-]+$/, { timeout: 15_000 });
-
-    // Navigate to the Topology tab.
-    await page.getByRole('link', { name: /^topology$/i }).click();
-    await page.waitForURL(/\/architectures\/[\w-]+\/topology$/, { timeout: 15_000 });
+    await loginAsDemo(page);
+    const archId = await openSeededArchitecture(page);
+    await page.goto(`/architectures/${archId}/topology`);
 
     // React Flow mounts a container with class `react-flow`; nodes carry data-id.
     const flow = page.locator('.react-flow');

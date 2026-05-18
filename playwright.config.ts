@@ -27,7 +27,9 @@ export default defineConfig({
   webServer: process.env.E2E_BASE_URL
     ? undefined
     : {
-        command: `next dev -p ${PORT}`,
+        // Use npx so the `next` binary resolves through ./node_modules/.bin
+        // even when Playwright spawns a fresh shell without our PATH.
+        command: `npx next dev -p ${PORT}`,
         port: PORT,
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,
