@@ -1,9 +1,10 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 
+// DESIGN.md feature-card: surface-card bg, 12px radius, hairline border, no shadow.
 const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('rounded-lg border bg-card text-card-foreground shadow-sm', className)} {...props} />
+    <div ref={ref} className={cn('rounded-lg border border-white/[0.08] bg-surface-card text-ink', className)} {...props} />
   )
 );
 Card.displayName = 'Card';
@@ -17,7 +18,7 @@ CardHeader.displayName = 'CardHeader';
 
 const CardTitle = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('text-lg font-semibold leading-none tracking-tight', className)} {...props} />
+    <div ref={ref} className={cn('text-[15px] font-medium leading-none tracking-tight text-ink', className)} {...props} />
   )
 );
 CardTitle.displayName = 'CardTitle';

@@ -11,6 +11,8 @@ import { IncidentActions } from '@/components/incidents/incident-actions';
 import { formatRelative, parseJson } from '@/lib/utils';
 import { ArrowLeft, MessageSquare, AlertCircle, CheckCircle2, Check, UserPlus, Bot, FileText, ScrollText } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { RcaPanel } from '@/components/incidents/rca-panel';
+import { FixPrPanel } from '@/components/incidents/fix-pr-panel';
 
 export const dynamic = 'force-dynamic';
 
@@ -102,19 +104,8 @@ export default async function IncidentDetailPage({ params }: { params: { id: str
             </Card>
           )}
 
-          {incident.rcaMarkdown && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Bot className="h-4 w-4 text-primary" /> AI root-cause analysis
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <pre className="whitespace-pre-wrap text-sm leading-relaxed font-sans">{incident.rcaMarkdown}</pre>
-                {incident.rcaModel && <div className="text-[10px] text-muted-foreground mt-3">model: {incident.rcaModel}</div>}
-              </CardContent>
-            </Card>
-          )}
+          <RcaPanel incidentId={incident.id} initial={incident.rcaMarkdown} model={incident.rcaModel} />
+          <FixPrPanel incidentId={incident.id} hasRca={!!incident.rcaMarkdown} />
 
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-base">Timeline</CardTitle></CardHeader>

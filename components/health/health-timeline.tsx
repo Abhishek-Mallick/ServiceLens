@@ -1,9 +1,13 @@
 'use client';
+import { useEffect, useState } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { format } from 'date-fns';
 import type { HealthEntry } from './health-dashboard';
 
 export function HealthTimeline({ history }: { history: HealthEntry[] }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  if (!mounted) return <div className="h-[220px]" suppressHydrationWarning />;
   const data = history.map((h) => ({
     t: format(new Date(h.checkedAt), 'MMM d HH:mm'),
     rt: h.responseTime ?? 0,

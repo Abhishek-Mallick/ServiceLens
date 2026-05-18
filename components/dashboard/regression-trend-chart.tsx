@@ -1,4 +1,5 @@
 'use client';
+import { useEffect, useState } from 'react';
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { format } from 'date-fns';
 
@@ -11,6 +12,8 @@ interface Run {
 }
 
 export function RegressionTrendChart({ runs }: { runs: Run[] }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
   const data = runs
     .slice()
     .reverse()
@@ -20,6 +23,7 @@ export function RegressionTrendChart({ runs }: { runs: Run[] }) {
       failed: r.failed,
     }));
   if (data.length === 0) return null;
+  if (!mounted) return <div className="h-[160px]" suppressHydrationWarning />;
 
   return (
     <ResponsiveContainer width="100%" height={160}>

@@ -15,9 +15,23 @@ const config: Config = {
     },
     extend: {
       fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui'],
+        sans: ['var(--font-inter)', 'Inter', 'ui-sans-serif', 'system-ui'],
+        display: ['var(--font-display)', 'Tiempos Headline', 'Söhne', 'Georgia', 'serif'],
+        mono: ['var(--font-mono)', 'JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
       },
       colors: {
+        // Resend surface layers
+        canvas: 'hsl(var(--background))',
+        'surface-card': 'hsl(var(--surface-card))',
+        'surface-elevated': 'hsl(var(--surface-elevated))',
+        'surface-deep': 'hsl(var(--surface-deep))',
+        ink: 'hsl(var(--foreground))',
+        // Resend accent palette (atmospheric only — never solid surfaces)
+        'accent-orange': '#ff801f',
+        'accent-yellow': '#ffc53d',
+        'accent-blue':   '#3b9eff',
+        'accent-green':  '#11ff99',
+        'accent-red':    '#ff2047',
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
@@ -61,9 +75,14 @@ const config: Config = {
         },
       },
       borderRadius: {
+        // DESIGN.md scale: xs 4 · sm 6 · md 8 · lg 12 (radius) · xl 16 · full
+        none: '0',
+        xs: '4px',
+        sm: '6px',
+        md: '8px',
         lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
+        xl: '16px',
+        full: '9999px',
       },
       keyframes: {
         'accordion-down': {

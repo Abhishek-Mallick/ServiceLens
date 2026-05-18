@@ -2,110 +2,123 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * DESIGN.md — Resend dark editorial system. Dark-only by design; we still
+ * publish a ".dark" override (identical to :root) so any consumer reading
+ * prefers-color-scheme never paints a light slab.
+ *
+ * Values are tuned HSL approximations of the DESIGN.md palette. Translucent
+ * white tokens (hairline, body, charcoal) are exposed as utility classes.
+ */
+
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 239 84% 67%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222 47% 11%;
-    --destructive: 352 80% 55%;
-    --destructive-foreground: 0 0% 100%;
-    --success: 152 60% 45%;
-    --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 239 84% 67%;
-    --radius: 0.5rem;
-  }
+    --background: 0 0% 0%;            /* canvas #000 */
+    --foreground: 220 100% 99%;       /* ink #fcfdff */
 
+    --surface-card: 240 13% 4%;       /* #0a0a0c */
+    --surface-elevated: 240 5% 7%;    /* #101012 */
+    --surface-deep: 240 25% 3%;       /* #06060a */
+
+    --card: 240 13% 4%;
+    --card-foreground: 220 100% 99%;
+    --popover: 240 5% 7%;
+    --popover-foreground: 220 100% 99%;
+
+    --primary: 220 100% 99%;          /* white pill */
+    --primary-foreground: 0 0% 0%;
+    --secondary: 240 5% 7%;
+    --secondary-foreground: 220 100% 99%;
+
+    --muted: 240 8% 9%;
+    --muted-foreground: 195 2% 64%;   /* mute */
+
+    --accent: 240 5% 10%;
+    --accent-foreground: 220 100% 99%;
+
+    --destructive: 350 100% 56%;      /* accent-red */
+    --destructive-foreground: 0 0% 0%;
+
+    --success: 152 100% 45%;          /* accent-green */
+    --success-foreground: 0 0% 0%;
+
+    --warning: 24 100% 56%;           /* accent-orange */
+    --warning-foreground: 0 0% 0%;
+
+    /* Hairline encoded as near-black HSL so `border-border` reads as a 1px line
+     * without alpha math. The translucent versions live in utility classes. */
+    --border: 240 6% 14%;
+    --input: 240 6% 14%;
+    --ring: 220 100% 99%;
+    --radius: 0.75rem; /* lg = 12px per DESIGN.md */
+  }
   .dark {
-    --background: 222 47% 6%;
-    --foreground: 210 40% 98%;
-    --card: 222 47% 8%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222 47% 8%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 239 84% 67%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 217 33% 17%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 352 75% 55%;
-    --destructive-foreground: 0 0% 100%;
-    --success: 152 55% 50%;
-    --success-foreground: 0 0% 100%;
-    --warning: 38 92% 55%;
-    --warning-foreground: 0 0% 100%;
-    --border: 217 33% 20%;
-    --input: 217 33% 20%;
-    --ring: 239 84% 67%;
+    --background: 0 0% 0%;
+    --foreground: 220 100% 99%;
+    --surface-card: 240 13% 4%;
+    --surface-elevated: 240 5% 7%;
+    --surface-deep: 240 25% 3%;
+    --card: 240 13% 4%;
+    --card-foreground: 220 100% 99%;
+    --popover: 240 5% 7%;
+    --popover-foreground: 220 100% 99%;
+    --primary: 220 100% 99%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 240 5% 7%;
+    --secondary-foreground: 220 100% 99%;
+    --muted: 240 8% 9%;
+    --muted-foreground: 195 2% 64%;
+    --accent: 240 5% 10%;
+    --accent-foreground: 220 100% 99%;
+    --destructive: 350 100% 56%;
+    --destructive-foreground: 0 0% 0%;
+    --success: 152 100% 45%;
+    --success-foreground: 0 0% 0%;
+    --warning: 24 100% 56%;
+    --warning-foreground: 0 0% 0%;
+    --border: 240 6% 14%;
+    --input: 240 6% 14%;
+    --ring: 220 100% 99%;
   }
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
+  * { @apply border-border; }
+  html { color-scheme: dark; }
   body {
     @apply bg-background text-foreground;
     font-feature-settings: 'rlig' 1, 'calt' 1, 'ss01' 1;
   }
 }
 
+@layer utilities {
+  /* Editorial display headline — Fraunces stands in for Domaine Display. */
+  .font-display { font-family: var(--font-display), 'Tiempos Headline', 'Söhne', Georgia, serif; font-feature-settings: 'ss01', 'liga', 'ss04'; letter-spacing: -0.01em; }
+  /* Atmospheric glow utility — single low-opacity radial wash anchored at top.
+   * Per DESIGN.md: never two glows in the same section. */
+  .glow-orange { background-image: radial-gradient(ellipse 70% 50% at 50% 0%, hsl(24 100% 56% / 0.12), transparent 60%); }
+  .glow-blue   { background-image: radial-gradient(ellipse 70% 50% at 50% 0%, hsl(211 100% 62% / 0.18), transparent 60%); }
+  .glow-green  { background-image: radial-gradient(ellipse 70% 50% at 50% 0%, hsl(152 100% 53% / 0.10), transparent 60%); }
+  .glow-red    { background-image: radial-gradient(ellipse 70% 50% at 50% 0%, hsl(350 100% 56% / 0.18), transparent 60%); }
+  .hairline { border: 1px solid hsl(0 0% 100% / 0.06); }
+  .hairline-strong { border: 1px solid hsl(0 0% 100% / 0.14); }
+  .text-ink { color: hsl(220 100% 99%); }
+  .text-body { color: hsl(220 100% 99% / 0.86); }
+  .text-charcoal { color: hsl(220 100% 99% / 0.7); }
+  .text-ash { color: hsl(195 2% 55%); }
+}
+
 @layer components {
-  .glass-card {
-    @apply bg-card/70 backdrop-blur-xl border border-border/60;
-  }
-  .gradient-border {
-    position: relative;
-  }
-  .gradient-border::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    padding: 1px;
-    background: linear-gradient(135deg, hsl(239 84% 67% / 0.4), transparent 60%);
-    border-radius: inherit;
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
+  /* code-window — Resend's signature surface. */
+  .code-window {
+    background: hsl(var(--surface-deep));
+    border: 1px solid hsl(0 0% 100% / 0.14);
+    border-radius: var(--radius);
   }
 }
 
-.react-flow__edge-path {
-  stroke-width: 2;
-}
-.react-flow__edge.animated .react-flow__edge-path {
-  stroke-dasharray: 8;
-  animation: dashdraw 0.5s linear infinite;
-}
-@keyframes dashdraw {
-  to {
-    stroke-dashoffset: -16;
-  }
-}
-
-.scrollbar-thin::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-.scrollbar-thin::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted));
-  border-radius: 3px;
-}
+.react-flow__edge-path { stroke-width: 2; }
+.react-flow__edge.animated .react-flow__edge-path { stroke-dasharray: 8; animation: dashdraw 0.5s linear infinite; }
+@keyframes dashdraw { to { stroke-dashoffset: -16; } }
+.scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: hsl(var(--muted)); border-radius: 3px; }

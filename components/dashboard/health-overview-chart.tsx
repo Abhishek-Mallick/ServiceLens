@@ -1,4 +1,5 @@
 'use client';
+import { useEffect, useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from 'recharts';
 
 interface Props {
@@ -9,6 +10,10 @@ interface Props {
 }
 
 export function HealthOverviewChart({ healthy, degraded, down, unknown }: Props) {
+  // Recharts SVG <Pie>/<Legend> measure layout on the client, which doesn't match
+  // the server render — wait until mount before rendering to dodge hydration drift.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
   const data = [
     { name: 'Healthy', value: healthy, color: 'hsl(152 60% 45%)' },
     { name: 'Degraded', value: degraded, color: 'hsl(38 92% 50%)' },
@@ -20,6 +25,10 @@ export function HealthOverviewChart({ healthy, degraded, down, unknown }: Props)
 
   if (total === 0) {
     return <div className="flex h-[180px] items-center justify-center text-sm text-muted-foreground">No services to report yet.</div>;
+  }
+
+  if (!mounted) {
+    return <div className="h-[180px]" suppressHydrationWarning />;
   }
 
   return (

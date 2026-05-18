@@ -1,4 +1,5 @@
 'use client';
+import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { SimulatedBadge } from '@/components/shared/simulated-badge';
@@ -13,6 +14,8 @@ interface Props {
 }
 
 export function ServiceHealthCard({ service, selected, onClick }: Props) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
   const latest = service.history[service.history.length - 1];
   const uptimes = (['24', '168', '720'] as const).map((hours) => {
     const cutoff = Date.now() - Number(hours) * 60 * 60 * 1000;
@@ -59,6 +62,7 @@ export function ServiceHealthCard({ service, selected, onClick }: Props) {
           ))}
         </div>
         <div className="h-8">
+          {mounted ? (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={sparkData}>
               <YAxis hide domain={['auto', 'auto']} />
@@ -72,6 +76,7 @@ export function ServiceHealthCard({ service, selected, onClick }: Props) {
               />
             </LineChart>
           </ResponsiveContainer>
+          ) : <div className="h-full" suppressHydrationWarning />}
         </div>
         <div className="text-[10px] text-muted-foreground mt-2">Last checked {formatRelative(service.lastHealthCheck)}</div>
       </CardContent>

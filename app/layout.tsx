@@ -1,12 +1,17 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Inter, Fraunces, JetBrains_Mono } from 'next/font/google';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 import { AuthProvider } from '@/components/providers/auth-provider';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Toaster } from 'sonner';
 import './globals.css';
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
+// Inter — UI body. ABC Favorit's open-source stand-in role is also Inter here.
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
+// Fraunces — open-source editorial serif standing in for Domaine Display per DESIGN.md.
+const display = Fraunces({ subsets: ['latin'], variable: '--font-display', display: 'swap', axes: ['SOFT', 'opsz'] });
+// JetBrains Mono — code-window monospace.
+const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono', display: 'swap' });
 
 export const metadata: Metadata = {
   title: 'ServiceLens — Git-native microservice topology & regression testing',
@@ -16,8 +21,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={inter.variable}>
-      <body className="min-h-screen bg-background font-sans antialiased">
+    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${display.variable} ${mono.variable} dark`}>
+      <body className="min-h-screen bg-canvas text-ink font-sans antialiased">
         <AuthProvider>
           <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
             <TooltipProvider delayDuration={150}>
