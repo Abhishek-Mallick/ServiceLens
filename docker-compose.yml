@@ -1,14 +1,55 @@
-version: '3.9'
+# Local dev infra so contributors don't need a Neon account.
+# Postgres is the only required service; the others are optional and only used
+# by Phase 2 (Mailpit) / Phase 7 (Redis if you swap the in-process job queue).
+#
+# Quickstart:
+#   docker compose up -d postgres
+#   # then in your .env:
+#   #   DATABASE_URL="postgresql://servicelens:servicelens@localhost:5432/servicelens?sslmode=disable"
+#   #   DIRECT_URL="postgresql://servicelens:servicelens@localhost:5432/servicelens?sslmode=disable"
+#   npm run prisma:push
+#   npm run prisma:seed
+#   npm run dev
 
-# Optional Redis for BullMQ. Postgres is hosted on Neon — no local container needed.
-# The app also runs with an in-process queue if Redis is not set.
 services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: servicelens
+      POSTGRES_PASSWORD: servicelens
+      POSTGRES_DB: servicelens
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U servicelens']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Mailpit — captures every email Resend would send, viewable at http://localhost:8025
+  # Use this when you don't want to burn the Resend free-tier quota in dev.
+  # Wire it up by pointing the Resend SDK at any other provider; or just leave
+  # RESEND_API_KEY unset and the console channel will log instead.
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - '1025:1025'  # SMTP
+      - '8025:8025'  # UI
+
+  # Optional Redis if you swap the in-process job queue for BullMQ later.
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
     ports:
       - '6379:6379'
     volumes:
       - redis_data:/data
+    profiles: ['redis']  # only starts with --profile redis
 
 volumes:
+  postgres_data:
   redis_data:

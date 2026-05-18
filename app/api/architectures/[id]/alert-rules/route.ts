@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { requireSession, requireOwnedArchitecture } from '@/lib/auth-helpers';
 import { stringify } from '@/lib/utils';
+import { record, context } from '@/lib/audit';
 
 const ConditionInput = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('status_eq'), status: z.enum(['down', 'degraded', 'healthy']) }),
@@ -56,6 +57,15 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       channels: stringify(body.channels ?? ['inapp']),
       enabled: body.enabled ?? true,
     },
+  });
+  void record({
+    action: 'rule.create',
+    architectureId: params.id,
+    userId: session.user.id,
+    targetType: 'rule',
+    targetId: rule.id,
+    payload: { name: rule.name, severity: rule.severity },
+    ...context(req),
   });
   return NextResponse.json({ rule }, { status: 201 });
 }

@@ -12,6 +12,7 @@
     "prisma:push": "prisma db push",
     "prisma:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma db push --force-reset && npm run prisma:seed",
+    "worker": "tsx scripts/worker.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test"

@@ -1,6 +1,7 @@
 import type { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import GitHubProvider from 'next-auth/providers/github';
+import GoogleProvider from 'next-auth/providers/google';
 import bcrypt from 'bcryptjs';
 import { prisma } from './prisma';
 
@@ -31,6 +32,15 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
   );
 }
 
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  providers.push(
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    })
+  );
+}
+
 export const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt' },
   pages: { signIn: '/login' },
@@ -45,7 +55,8 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
     async signIn({ user, account }) {
-      if (account?.provider === 'github' && user.email) {
+      if (!user.email) return true;
+      if (account?.provider === 'github') {
         await prisma.user.upsert({
           where: { email: user.email },
           update: { name: user.name, image: user.image, githubId: account.providerAccountId },
@@ -54,6 +65,16 @@ export const authOptions: NextAuthOptions = {
             name: user.name ?? null,
             image: user.image ?? null,
             githubId: account.providerAccountId,
+          },
+        });
+      } else if (account?.provider === 'google') {
+        await prisma.user.upsert({
+          where: { email: user.email },
+          update: { name: user.name, image: user.image },
+          create: {
+            email: user.email,
+            name: user.name ?? null,
+            image: user.image ?? null,
           },
         });
       }

@@ -3,6 +3,44 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 
+// Phase 7 safety hardening. Public Git URLs are user-supplied, so every clone
+// must validate the URL scheme, time out aggressively, sandbox into a fresh
+// tmpdir, and bail if the checkout balloons past the size cap.
+const CLONE_TIMEOUT_MS = 30_000;
+const REPO_SIZE_CAP_BYTES = 50 * 1024 * 1024; // 50 MB
+const ALLOWED_PROTOCOLS = new Set(['http:', 'https:']);
+
+export function validateRepoUrl(repoUrl: string): { ok: true; url: URL } | { ok: false; reason: string } {
+  let url: URL;
+  try { url = new URL(repoUrl); } catch { return { ok: false, reason: 'malformed URL' }; }
+  if (!ALLOWED_PROTOCOLS.has(url.protocol)) return { ok: false, reason: `protocol ${url.protocol} not allowed (use http(s))` };
+  // Block private network targets — best-effort, since DNS can still resolve to private space.
+  // The downstream Git operation is also network-bounded by the timeout below.
+  if (/^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|169\.254\.)/i.test(url.hostname)) {
+    return { ok: false, reason: 'private/loopback host not allowed' };
+  }
+  return { ok: true, url };
+}
+
+async function dirSize(dir: string): Promise<number> {
+  let total = 0;
+  const stack = [dir];
+  while (stack.length) {
+    const cur = stack.pop()!;
+    let entries: { name: string; isDir: boolean }[] = [];
+    try {
+      const items = await fs.readdir(cur, { withFileTypes: true });
+      entries = items.map((d) => ({ name: d.name, isDir: d.isDirectory() }));
+    } catch { continue; }
+    for (const e of entries) {
+      const full = path.join(cur, e.name);
+      if (e.isDir) { stack.push(full); continue; }
+      try { total += (await fs.stat(full)).size; if (total > REPO_SIZE_CAP_BYTES) return total; } catch {}
+    }
+  }
+  return total;
+}
+
 const INTERESTING_FILES = [
   'package.json',
   'pom.xml',
@@ -32,9 +70,27 @@ export interface ExtractedFile {
 }
 
 export async function cloneShallow(repoUrl: string, branch = 'main'): Promise<string> {
+  const validated = validateRepoUrl(repoUrl);
+  if (!validated.ok) throw new Error(`Refused to clone: ${validated.reason}`);
+
+  // Sandbox into a fresh tmpdir under the OS temp root. Cleaned up by the
+  // caller via cleanup() after the analysis pass — we don't try to mutate
+  // anything outside this dir.
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'servicelens-'));
-  const git = simpleGit();
-  await git.clone(repoUrl, tmpDir, ['--depth', '1', '--branch', branch]);
+
+  const git = simpleGit({ timeout: { block: CLONE_TIMEOUT_MS } });
+  try {
+    await git.clone(repoUrl, tmpDir, ['--depth', '1', '--branch', branch, '--single-branch']);
+  } catch (err) {
+    await cleanup(tmpDir);
+    throw err instanceof Error ? err : new Error(String(err));
+  }
+
+  const size = await dirSize(tmpDir);
+  if (size > REPO_SIZE_CAP_BYTES) {
+    await cleanup(tmpDir);
+    throw new Error(`Refused to analyze: checkout size ${(size / 1_048_576).toFixed(1)} MB exceeds ${REPO_SIZE_CAP_BYTES / 1_048_576} MB cap`);
+  }
   return tmpDir;
 }
 

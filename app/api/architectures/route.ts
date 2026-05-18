@@ -6,6 +6,7 @@ import { authOptions } from '@/lib/auth';
 import { getTemplate } from '@/lib/architecture-templates';
 import { stringify } from '@/lib/utils';
 import { buildTopology } from '@/lib/topology-builder';
+import { listForUser } from '@/lib/membership';
 
 async function requireUser() {
   const session = await getServerSession(authOptions);
@@ -16,11 +17,7 @@ async function requireUser() {
 export async function GET() {
   const user = await requireUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const architectures = await prisma.architecture.findMany({
-    where: { userId: user.id },
-    include: { _count: { select: { services: true, regressionRuns: true } } },
-    orderBy: { updatedAt: 'desc' },
-  });
+  const architectures = await listForUser(user.id);
   return NextResponse.json({ architectures });
 }
 
@@ -43,6 +40,7 @@ export async function POST(req: Request) {
       description: parsed.data.description ?? null,
       userId: user.id,
       status: 'draft',
+      members: { create: { userId: user.id, role: 'owner', acceptedAt: new Date() } },
     },
   });
 

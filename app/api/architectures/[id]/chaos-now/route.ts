@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { requireSession, requireOwnedArchitecture } from '@/lib/auth-helpers';
 import { applyChaos } from '@/lib/chaos';
+import { record, context } from '@/lib/audit';
 
 const Input = z.object({
   serviceId: z.string().optional(),
@@ -33,6 +34,15 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     action: body.action,
     durationSec: body.durationSec,
     byUserId: session.user.id,
+  });
+  void record({
+    action: 'chaos.now',
+    architectureId: params.id,
+    userId: session.user.id,
+    targetType: 'service',
+    targetId: serviceId,
+    payload: { action: body.action, durationSec: body.durationSec },
+    ...context(req),
   });
   return NextResponse.json(result, { status: 201 });
 }

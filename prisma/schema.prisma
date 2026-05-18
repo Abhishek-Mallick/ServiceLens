@@ -20,10 +20,12 @@ model User {
   image         String?
   githubId      String?        @unique
   architectures Architecture[]
+  memberships   ArchitectureMember[]
   assignedIncidents Incident[] @relation("incidentAssignee")
   incidentEvents IncidentEvent[]
   notifications Notification[]
   notificationPref UserNotificationPref?
+  auditEvents   AuditEvent[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 }
@@ -39,6 +41,8 @@ model Architecture {
   alertRules     AlertRule[]
   incidents      Incident[]
   chaosSchedules ChaosSchedule[]
+  members        ArchitectureMember[]
+  auditEvents    AuditEvent[]
   status         String          @default("draft") // draft, analyzing, ready, error
   topologyData   String? // JSON; cached topology graph data
   slackWebhookUrl String? // Phase 2: per-architecture Slack incoming webhook
@@ -306,6 +310,45 @@ model ChaosSchedule {
   updatedAt      DateTime     @updatedAt
 
   @@index([architectureId, enabled])
+}
+
+// Architecture membership — replaces single-owner ownership checks. Phase 7
+// upgrade: the original `Architecture.userId` is preserved as the "creator"
+// but real authz now reads through this table so multiple users can share
+// an arch with role-scoped permissions.
+model ArchitectureMember {
+  id             String       @id @default(cuid())
+  architectureId String
+  architecture   Architecture @relation(fields: [architectureId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           String       @default("owner") // owner | editor | viewer
+  invitedAt      DateTime     @default(now())
+  acceptedAt     DateTime?
+
+  @@unique([architectureId, userId])
+  @@index([userId, role])
+}
+
+// Append-only audit trail for security-sensitive actions. Indexed for cheap
+// per-architecture and per-user filtering.
+model AuditEvent {
+  id             String       @id @default(cuid())
+  architectureId String?
+  architecture   Architecture? @relation(fields: [architectureId], references: [id], onDelete: SetNull)
+  userId         String?
+  user           User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action         String // incident.ack | rule.create | service.delete | probe.run_now | chaos.now | member.invite | …
+  targetType     String? // incident | rule | service | probe | chaos | member
+  targetId       String?
+  ip             String?
+  userAgent      String?
+  payload        String? // JSON snapshot (small)
+  at             DateTime     @default(now())
+
+  @@index([architectureId, at])
+  @@index([userId, at])
+  @@index([action, at])
 }
 
 model LogEntry {
