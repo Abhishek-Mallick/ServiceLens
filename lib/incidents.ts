@@ -3,6 +3,7 @@ import { stringify } from './utils';
 import { dispatch, parseChannels } from './notify';
 import type { Severity } from './notify';
 import { snapshotForIncident } from './logs';
+import { publish } from './realtime';
 
 export interface OpenIncidentInput {
   architectureId: string;
@@ -66,6 +67,14 @@ export async function openIncident(input: OpenIncidentInput): Promise<{ id: stri
     )
     .catch((err) => console.error('[incidents] log snapshot failed:', err));
 
+  publish(input.architectureId, 'incident_opened', {
+    incidentId: incident.id,
+    title: incident.title,
+    severity: incident.severity,
+    serviceId: incident.serviceId ?? null,
+    simulated: incident.simulated,
+  });
+
   // Notify (fire-and-forget — we don't want a flaky webhook to break the probe loop).
   void notifyForIncident(incident.id, 'IncidentOpened').catch((err) =>
     console.error('[incidents] dispatch IncidentOpened failed:', err)
@@ -109,6 +118,8 @@ export async function ackIncident(incidentId: string, byUserId: string | null): 
   await prisma.incidentEvent.create({
     data: { incidentId, type: 'acked', byUserId, payload: null },
   });
+  const inc = await prisma.incident.findUnique({ where: { id: incidentId }, select: { architectureId: true } });
+  if (inc) publish(inc.architectureId, 'incident_updated', { incidentId, status: 'acknowledged' });
   void notifyForIncident(incidentId, 'IncidentAcknowledged').catch((err) =>
     console.error('[incidents] dispatch IncidentAcknowledged failed:', err)
   );
@@ -123,6 +134,8 @@ export async function resolveIncident(incidentId: string, byUserId: string | nul
   await prisma.incidentEvent.create({
     data: { incidentId, type: 'resolved', byUserId, payload: resolution ? stringify({ resolution }) : null },
   });
+  const inc = await prisma.incident.findUnique({ where: { id: incidentId }, select: { architectureId: true } });
+  if (inc) publish(inc.architectureId, 'incident_resolved', { incidentId });
   void notifyForIncident(incidentId, 'IncidentResolved').catch((err) =>
     console.error('[incidents] dispatch IncidentResolved failed:', err)
   );

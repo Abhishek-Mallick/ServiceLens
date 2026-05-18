@@ -1,5 +1,6 @@
 import { prisma } from './prisma';
 import { stringify } from './utils';
+import { publish } from './realtime';
 
 export interface HealthCheckResult {
   status: 'healthy' | 'degraded' | 'down';
@@ -74,13 +75,21 @@ export async function recordHealth(serviceId: string, result: HealthCheckResult)
       simulated: result.simulated,
     },
   });
-  await prisma.service.update({
+  const svc = await prisma.service.update({
     where: { id: serviceId },
     data: {
       healthStatus: result.status,
       lastHealthCheck: new Date(),
       simulated: result.simulated,
     },
+    select: { id: true, architectureId: true, name: true, healthStatus: true },
+  });
+  publish(svc.architectureId, 'health', {
+    serviceId: svc.id,
+    name: svc.name,
+    status: svc.healthStatus,
+    rt: result.responseTime,
+    simulated: result.simulated,
   });
 }
 

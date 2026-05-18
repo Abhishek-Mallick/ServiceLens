@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { prisma } from './prisma';
 import { parseJson, stringify } from './utils';
+import { publish } from './realtime';
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -36,6 +37,12 @@ export async function ingestForService(serviceId: string, entries: IngestEntry[]
     at: e.at ? new Date(e.at) : new Date(),
   }));
   const res = await prisma.logEntry.createMany({ data: rows });
+
+  // Publish a single aggregate event (the SSE log tail does its own polling for
+  // detail). Cheap, useful for live-counters in the UI.
+  const svc = await prisma.service.findUnique({ where: { id: serviceId }, select: { architectureId: true } });
+  if (svc) publish(svc.architectureId, 'log', { serviceId, count: rows.length });
+
   return { count: res.count };
 }
 

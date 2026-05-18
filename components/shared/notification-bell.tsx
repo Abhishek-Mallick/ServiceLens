@@ -1,9 +1,11 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Bell, CheckCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn, formatRelative } from '@/lib/utils';
+import { useArchitectureEvents } from '@/lib/hooks/use-architecture-events';
 
 interface NotifRow {
   id: string;
@@ -17,10 +19,15 @@ interface NotifRow {
 }
 
 export function NotificationBell() {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<NotifRow[]>([]);
   const [unread, setUnread] = useState(0);
   const popRef = useRef<HTMLDivElement>(null);
+  // Best-effort: if the user is on an architecture page, subscribe to that
+  // arch's SSE and refresh on incident_opened. Otherwise the 30s poll covers it.
+  const archMatch = pathname?.match(/^\/architectures\/([^/]+)/);
+  const archId = archMatch ? archMatch[1] : null;
 
   async function load() {
     try {
@@ -37,6 +44,12 @@ export function NotificationBell() {
     const t = setInterval(load, 30_000);
     return () => clearInterval(t);
   }, []);
+
+  useArchitectureEvents(archId, (ev) => {
+    if (ev.kind === 'incident_opened' || ev.kind === 'incident_resolved' || ev.kind === 'incident_updated') {
+      load();
+    }
+  });
 
   useEffect(() => {
     function onClick(e: MouseEvent) {

@@ -38,6 +38,7 @@ model Architecture {
   regressionRuns RegressionRun[]
   alertRules     AlertRule[]
   incidents      Incident[]
+  chaosSchedules ChaosSchedule[]
   status         String          @default("draft") // draft, analyzing, ready, error
   topologyData   String? // JSON; cached topology graph data
   slackWebhookUrl String? // Phase 2: per-architecture Slack incoming webhook
@@ -285,6 +286,26 @@ model NotificationLog {
 
   @@index([incidentId, at])
   @@index([channel, status])
+}
+
+// ChaosSchedule — recurring fault injection on a target service. v1 supports
+// a tiny schedule grammar (kept simple on purpose; Vercel-Cron compatible
+// 5-field crons are a Phase 7 follow-up): "every 5m", "every 1h", or "HH:MM"
+// (UTC daily). Per-row lastRunAt acts as the dedup gate.
+model ChaosSchedule {
+  id             String       @id @default(cuid())
+  architectureId String
+  architecture   Architecture @relation(fields: [architectureId], references: [id], onDelete: Cascade)
+  targetServiceId String
+  schedule       String // "every 5m" | "every 1h" | "HH:MM"
+  action         String // kill_service | degrade | latency_spike
+  durationSec    Int          @default(300)
+  enabled        Boolean      @default(true)
+  lastRunAt      DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([architectureId, enabled])
 }
 
 model LogEntry {

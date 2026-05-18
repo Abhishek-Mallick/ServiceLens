@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { parseJson } from '@/lib/utils';
 import { buildTopology } from '@/lib/topology-builder';
 import type { TopologyGraph } from '@/lib/types';
-import { TopologyView } from '@/components/topology/topology-view';
+import { LiveTopology } from '@/components/topology/live-topology';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,7 +37,7 @@ export default async function TopologyPage({ params }: { params: { id: string } 
 
   return (
     <div className="h-[calc(100vh-var(--header-height,16rem))] min-h-[700px]">
-      <TopologyView architectureId={architecture.id} graph={graph} services={servicesSummary} />
+      <LiveTopology architectureId={architecture.id} graph={graph} services={servicesSummary} />
     </div>
   );
 }

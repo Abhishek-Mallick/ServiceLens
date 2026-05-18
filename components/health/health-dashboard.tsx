@@ -8,8 +8,9 @@ import { StatusBadge } from '@/components/shared/status-badge';
 import { ServiceHealthCard } from './service-health-card';
 import { AlertsPanel } from './alerts-panel';
 import { HealthTimeline } from './health-timeline';
-import { RefreshCw, Activity } from 'lucide-react';
+import { RefreshCw, Activity, Radio } from 'lucide-react';
 import { formatRelative } from '@/lib/utils';
+import { useArchitectureEvents } from '@/lib/hooks/use-architecture-events';
 
 export interface HealthEntry {
   status: string;
@@ -34,6 +35,22 @@ export function HealthDashboard({ architectureId, initialServices }: { architect
   const [services, setServices] = useState(initialServices);
   const [refreshing, setRefreshing] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
+  const [live, setLive] = useState(false);
+
+  // Realtime: subscribe to per-arch SSE. Patch the status optimistically on
+  // every `health` event so the cards flip without waiting for the next probe.
+  useArchitectureEvents(architectureId, (ev) => {
+    if (ev.kind === 'hello') { setLive(true); return; }
+    if (ev.kind === 'ping') return;
+    if (ev.kind === 'health') {
+      const { serviceId, status, rt } = ev.payload as { serviceId: string; status: string; rt: number | null };
+      setServices((prev) => prev.map((s) =>
+        s.id === serviceId
+          ? { ...s, healthStatus: status, lastHealthCheck: new Date(ev.at).toISOString(), history: [...s.history, { status, responseTime: rt, checkedAt: new Date(ev.at).toISOString() }].slice(-96) }
+          : s
+      ));
+    }
+  });
 
   const totals = useMemo(() => {
     const counts = { healthy: 0, degraded: 0, down: 0, unknown: 0 };
@@ -106,7 +123,14 @@ export function HealthDashboard({ architectureId, initialServices }: { architect
               {totals.degraded > 0 && <span className="ml-2 text-warning">· {totals.degraded} degraded</span>}
               {totals.down > 0 && <span className="ml-2 text-destructive">· {totals.down} down</span>}
             </div>
-            <div className="text-xs text-muted-foreground">Last checked: {latestCheck ? formatRelative(new Date(latestCheck)) : 'never'} · polling every 30s</div>
+            <div className="text-xs text-muted-foreground flex items-center gap-2">
+              Last checked: {latestCheck ? formatRelative(new Date(latestCheck)) : 'never'} · polling every 30s
+              {live && (
+                <span className="inline-flex items-center gap-1 text-accent-green">
+                  <Radio className="h-3 w-3 animate-pulse" /> live
+                </span>
+              )}
+            </div>
           </div>
         </div>
         <Button variant="outline" size="sm" onClick={() => refresh(true)} disabled={refreshing}>
