@@ -13,3 +13,5 @@ test-results
 tmp
 .tmp
 repos
+!tests/fixtures/repos
+!tests/fixtures/repos/**
