@@ -2,9 +2,11 @@
 
 > The mesh, observed. Map Git-backed microservices, run continuous health probes, evaluate alert rules, manage incidents, and stream AI root-cause analysis with actionable fix-PR output.
 
-**Live:** [servicelens.buildlab.in](https://servicelens.buildlab.in)
+**Live demo:** [servicelens.buildlab.in](https://servicelens.buildlab.in) · **Training environment:** [Incident Triage Env (HF Space)](https://huggingface.co/spaces/AbhishekMallick/incident-triage-env)
 
-ServiceLens is a full-stack **AI SRE platform** for microservice architectures. It discovers service topology from Git repositories, monitors health with declarative probes and alert rules, opens lifecycle-managed incidents (manually, via rules, or through chaos drills), and uses an LLM to stream evidence-grounded root-cause analysis plus a structured fix-PR diff. Optional integrations cover OAuth sign-in, email and Slack notifications, and automated GitHub PR creation.
+ServiceLens is a full-stack **observability intelligence platform** for microservice architectures. It automatically discovers service dependencies, API contracts, event flows, and runtime topology graphs from distributed repositories using graph-based analysis. The platform monitors health with declarative probes and alert rules, opens lifecycle-managed incidents, and streams evidence-grounded root-cause analysis plus structured fix-PR output — designed to **reduce MTTR** by surfacing cited evidence and actionable remediation instead of raw alert noise.
+
+The RCA and fix-PR pipeline is informed by models and investigative patterns trained in a companion [**Incident Triage Environment**](https://github.com/deepraj21/Incident-Triage-Env/tree/feat/incident-triage-env) — an OpenEnv-compliant RL simulator where agents learn production-grade triage under realistic operational constraints.
 
 ---
 
@@ -23,10 +25,10 @@ A JSON DSL evaluates after every probe cycle: status checks, latency thresholds,
 Full lifecycle — open → acknowledged → resolved — with deduplication, assignment, comments, audit timeline, and log snapshots captured at incident open. Resolution notes become **runbook memory** for future incidents on the same service.
 
 ### AI root-cause analysis
-On incident open, the platform assembles a rich context window (health history, 1-hop neighbor status, log lines, failed regression steps, prior resolutions) and streams an LLM-generated RCA over SSE. Output is structured markdown: likely root cause, cited evidence, and concrete next steps.
+On incident open, the platform assembles a rich context window (health history, 1-hop neighbor status, log lines, failed regression steps, prior resolutions) and streams an LLM-generated RCA over SSE. Output is structured markdown: likely root cause, cited evidence, and concrete next steps. The investigative workflow — trace dependencies, correlate logs and metrics, assess blast radius, propose remediation — mirrors the action surface agents are trained on in the [Incident Triage Environment](#incident-triage-environment-openenv).
 
 ### Fix-PR generation
-A second LLM pass produces structured patch output — branch name, per-file hunks, PR title and body. Render in the UI with copy/download, or open a draft PR via GitHub App integration.
+A second LLM pass produces structured patch output — branch name, per-file hunks, PR title and body, blast-radius estimate. Render in the UI with copy/download, or open a draft PR via GitHub App integration. The structured output schema aligns with the **PR-proposal** and **blast-radius** grading heads from the training environment's 4-head composite scorer.
 
 ### Chaos engineering
 Schedule or manually trigger fault injection (`kill_service`, `degrade`, `latency_spike`) to validate the full detect → incident → notify → RCA path without waiting for production failures.
@@ -59,7 +61,50 @@ Root-cause analysis is evidence-first, not a black-box chatbot.
 
 When the LLM is unavailable, a heuristic fallback still streams so the workflow remains demonstrable.
 
+The RCA prompt design emphasizes **evidence citation and causal-chain reasoning** — the same skills the Incident Triage grader rewards during training (direct evidence hits, dependency-tracing strategy, red-herring penalties). On held-out benchmark scenarios in the training environment, fine-tuned models reach **~76% composite score** (diagnosis, policy compliance, blast-radius, and PR-proposal heads combined) — a **+102% lift** over the base model baseline.
+
 Full pipeline diagram and data flows: **[`docs/architecture.md`](./docs/architecture.md#ai-root-cause-analysis)**.
+
+---
+
+## Incident Triage Environment (OpenEnv)
+
+ServiceLens ships alongside a purpose-built training substrate for autonomous SRE agents:
+
+> **OpenEnv-compliant RL environment for production incident triage** — a multi-app enterprise simulator where an agent must diagnose live production incidents under a step budget, against a dynamic world that changes mid-episode and a 4-head composite grader that scores **process quality, not just final accuracy**.
+
+| Resource | Link |
+|---|---|
+| Live environment (HF Space) | [huggingface.co/spaces/AbhishekMallick/incident-triage-env](https://huggingface.co/spaces/AbhishekMallick/incident-triage-env) |
+| Source (GitHub) | [github.com/deepraj21/Incident-Triage-Env](https://github.com/deepraj21/Incident-Triage-Env/tree/feat/incident-triage-env) |
+| Trained adapters (Qwen 1.5B / 3B / 7B) | [HF Hub — incident-triage-grpo-train](https://huggingface.co/AbhishekMallick/incident-triage-grpo-train) |
+| Training notebook (Colab) | [Open in Colab](https://colab.research.google.com/drive/10dHOtRzLHY3aMSc21hxQouLxTi_gXv-t) |
+
+### What it simulates
+
+The environment models the full oncall loop — not a static QA benchmark. Six enterprise apps (`alerthub`, `obsly`, `repohub`, `ticketdesk`, `chatops`, `uatsim`) expose a unified action surface over logs, metrics, distributed traces, deploy history, CI gates, on-call paging, and ticket workflows. A `WorldClock` and `EventQueue` evolve the world **mid-episode**: new alerts, deploys, oncall handoffs, and silent metric regressions can fire while the agent is still investigating.
+
+### How it connects to ServiceLens
+
+| Training environment | Production platform (ServiceLens) |
+|---|---|
+| `obsly.query_logs` / `query_metric` / `get_trace` | HEC log ingest, health probes, sparkline metrics |
+| `trace_dependencies` | Topology graph + 1-hop neighbor health in RCA |
+| `repohub.recent_commits` / `get_diff` / `open_pr` | Git analyzer + fix-PR generation |
+| `chatops.page_oncall` | Slack + email incident notifications |
+| `submit_diagnosis` + blast-radius + PR proposal | Incident RCA markdown + structured fix-PR JSON |
+| `PolicyEngine` (change-freeze, UAT bypass, CI gates) | Alert rules, chaos drills, operational runbook memory |
+
+Agents are trained with a two-stage **SFT → GRPO** pipeline on oracle trajectories, then graded by a **4-head composite scorer**:
+
+- **Diagnosis** — root-cause service, category, remediation, evidence coverage
+- **Policy** — operational discipline (page before rollback, no PR during freeze)
+- **Blast radius** — affected services, regions, request-failure magnitude
+- **PR proposal** — target repo, touched files, title/summary quality
+
+Per-step rewards shape investigation quality throughout the episode — not only at terminal submission. Eight scenarios span four difficulty tiers (easy through expert), including stealth regressions, change-freeze violations, UAT bypasses, and CI quality breaches. Seed variants expand the effective training set while preserving ground truth.
+
+ServiceLens applies these trained investigative patterns in production: topology-aware context assembly, evidence-first RCA streaming, and structured remediation output — the path from alert to diagnosed root cause in fewer steps, directly targeting **lower MTTR**.
 
 ---
 
@@ -69,6 +114,7 @@ Full pipeline diagram and data flows: **[`docs/architecture.md`](./docs/architec
 |---|---|
 | **PostgreSQL** (Neon or local) | Primary datastore — architectures, services, health, incidents, audit |
 | **OpenRouter** | Streamed RCA and fix-PR generation; rotating key pool with rate-limit fallback |
+| **Incident Triage Env** | OpenEnv RL training substrate; SFT/GRPO fine-tuned adapters inform RCA investigative patterns |
 | **NextAuth** | Session auth — credentials plus optional GitHub / Google OAuth |
 | **Resend** | Transactional email for incident notifications |
 | **Slack** | Webhook posts with Block Kit formatting and one-click acknowledge links |
@@ -142,3 +188,4 @@ Detailed diagrams — observability loop, incident lifecycle, RCA pipeline, fix-
 | [`docs/architecture.md`](./docs/architecture.md) | System design, data flows, RCA pipeline, module reference |
 | [`docs/env_get.md`](./docs/env_get.md) | Where every environment variable comes from |
 | [`docs/deploy_vercel.md`](./docs/deploy_vercel.md) | Production deployment and cron setup |
+| [Incident Triage Env](https://github.com/deepraj21/Incident-Triage-Env/tree/feat/incident-triage-env) | OpenEnv RL environment for training incident-response agents |

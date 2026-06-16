@@ -162,6 +162,56 @@ The model receives a structured user message with labeled sections (health, neig
 
 When OpenRouter is unavailable or rate-limited, a heuristic fallback still streams word-by-word so the incident workflow remains demonstrable.
 
+### Training substrate — Incident Triage Environment
+
+The RCA pipeline in ServiceLens is designed around investigative patterns validated in a companion [**OpenEnv-compliant RL environment**](https://huggingface.co/spaces/AbhishekMallick/incident-triage-env). The training env simulates the same observability signals ServiceLens surfaces in production:
+
+```mermaid
+flowchart TB
+  subgraph Training["Incident Triage Env (OpenEnv)"]
+    Agent[RL / SFT agent]
+  subgraph Apps["6-app dispatcher"]
+      AH[alerthub]
+      OB[obsly — logs · metrics · traces]
+      RH[repohub — deploys · CI · PRs]
+      TD[ticketdesk]
+      CO[chatops]
+      UA[uatsim]
+    end
+    WC[WorldClock + EventQueue]
+    Rubric[InvestigationRubric per-step]
+    Grader[4-head CompositeScorer]
+    Agent --> Apps
+    WC -->|mid-episode events| Apps
+    Agent --> Rubric
+    Agent -->|submit_diagnosis| Grader
+  end
+
+  subgraph Production["ServiceLens"]
+    RCA[RCA assembler]
+    SL_Logs[Log ingest + snapshot]
+    SL_Topo[Topology + neighbor health]
+    SL_Fix[Fix-PR generator]
+    RCA --> SL_Logs
+    RCA --> SL_Topo
+    RCA --> SL_Fix
+  end
+
+  Training -.->|trained patterns| Production
+```
+
+| Signal type | Training env action | ServiceLens equivalent |
+|---|---|---|
+| Logs | `obsly.query_logs` | HEC ingest + open-time log snapshot |
+| Metrics | `obsly.query_metric` | Health probes + response-time history |
+| Traces | `obsly.get_trace` | Regression flow steps + dependency edges |
+| Topology | `obsly.trace_dependencies` | `ServiceDependency` graph + 1-hop RCA context |
+| Deploys | `repohub.recent_commits` / `get_diff` | Git analyzer shallow clone |
+| Remediation | `submit_diagnosis` + `pr_proposal` + `blast_radius` | RCA markdown + fix-PR JSON |
+| Process hygiene | `PolicyEngine` per-step penalties | Runbook memory + alert-rule discipline |
+
+Fine-tuned Qwen adapters ([HF Hub](https://huggingface.co/AbhishekMallick/incident-triage-grpo-train)) are trained on oracle trajectories with per-step rubric shaping and terminal 4-head grading (diagnosis · policy · blast-radius · PR-proposal). Held-out eval reaches **~76% composite score** (+102% over baseline), with the largest gains on structured blast-radius and PR outputs — the same structured fields ServiceLens emits in the fix-PR flow.
+
 ---
 
 ## Fix-PR generation
@@ -260,3 +310,4 @@ Regression flow discovery runs through `regression-engine.ts` (simulated outcome
 - **[LOCAL_SETUP.md](./LOCAL_SETUP.md)** — clone, database, env, commands
 - **[env_get.md](./env_get.md)** — where every env value comes from
 - **[deploy_vercel.md](./deploy_vercel.md)** — production deploy, cron, caveats
+- **[Incident Triage Env](https://github.com/deepraj21/Incident-Triage-Env/tree/feat/incident-triage-env)** — OpenEnv RL training environment ([HF Space](https://huggingface.co/spaces/AbhishekMallick/incident-triage-env))
