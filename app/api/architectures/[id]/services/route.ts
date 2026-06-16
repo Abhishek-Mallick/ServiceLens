@@ -7,6 +7,8 @@ import { authOptions } from '@/lib/auth';
 const addSchema = z.object({
   name: z.string().min(1).max(120),
   repoUrl: z.string().url(),
+  deployedUrl: z.string().url().optional(),
+  provider: z.enum(['github', 'bitbucket_soon', 'gitlab_soon']).default('github'),
   branch: z.string().default('main'),
 });
 
@@ -21,7 +23,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   const body = await req.json().catch(() => null);
   const parsed = addSchema.safeParse(body);
-  if (!parsed.success) return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+  if (!parsed.success) return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 });
+
+  if (parsed.data.provider !== 'github') {
+    return NextResponse.json({ error: `Provider ${parsed.data.provider} not yet supported — coming soon` }, { status: 400 });
+  }
 
   const service = await prisma.service.create({
     data: {
@@ -29,6 +35,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       name: parsed.data.name,
       repoUrl: parsed.data.repoUrl,
       branch: parsed.data.branch,
+      provider: parsed.data.provider,
+      deployedUrl: parsed.data.deployedUrl ?? null,
       analysisStatus: 'pending',
     },
   });

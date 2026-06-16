@@ -56,6 +56,9 @@ model Service {
   name            String
   repoUrl         String
   branch          String               @default("main")
+  provider        String               @default("github") // "github" | "bitbucket_soon" | "gitlab_soon"
+  deployedUrl     String?
+  contract        ServiceContract?
   architectureId  String
   architecture    Architecture         @relation(fields: [architectureId], references: [id], onDelete: Cascade)
   analysisStatus  String               @default("pending") // pending, cloning, analyzing, completed, error
@@ -366,6 +369,18 @@ model LogEntry {
   @@index([serviceId, at])
   @@index([serviceId, level, at])
   @@index([traceId])
+}
+
+model ServiceContract {
+  id           String   @id @default(cuid())
+  serviceId    String   @unique
+  service      Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  endpoints    String   // JSON: Endpoint[]
+  outboundDeps String   // JSON: OutboundDep[]
+  envVars      String   // JSON: { name, defaultValue? }[]
+  framework    String?
+  commitSha    String?
+  extractedAt  DateTime @default(now())
 }
 
 model UserNotificationPref {

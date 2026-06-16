@@ -1,119 +1,262 @@
-# Architecture map
+# Architecture
 
-A one-page reference for what every `lib/` module owns. Each module is unit-testable in isolation; API routes (`app/api/**`) are thin handlers that call into these.
+How ServiceLens observes a microservice mesh, reacts to failures, and drives AI-assisted incident response. For module-level ownership, see the [module reference](#module-reference) at the bottom.
 
-## Data flow
+---
 
+## System context
+
+ServiceLens sits between operators and their service landscape. It ingests Git repositories to infer topology, runs continuous health probes, evaluates declarative alert rules, manages incident lifecycles, and streams LLM-powered root-cause analysis back to the UI in real time.
+
+```mermaid
+flowchart TB
+  subgraph Operators
+    Browser[Web UI]
+    ExtCron[External cron / worker]
+    SvcTeams[Service teams]
+  end
+
+  subgraph ServiceLens["ServiceLens (Next.js)"]
+    API[Route handlers]
+    Core[Platform core]
+    SSE[SSE realtime bus]
+    Browser --> API
+    API --> Core
+    Core --> SSE
+    SSE --> Browser
+    ExtCron -->|GET /api/cron/tick| API
+  end
+
+  subgraph Data
+    PG[(PostgreSQL)]
+    Core --> PG
+  end
+
+  subgraph External
+    Git[Git remotes]
+    OR[OpenRouter LLM]
+    Resend[Resend email]
+    Slack[Slack webhooks]
+    GHApp[GitHub App]
+    OAuth[GitHub / Google OAuth]
+  end
+
+  Core -->|shallow clone + analyze| Git
+  Core -->|stream RCA + fix-PR| OR
+  Core --> Resend
+  Core --> Slack
+  Core -->|optional draft PR| GHApp
+  OAuth --> API
+  SvcTeams -->|HEC-style log ingest| API
 ```
-┌─────────────┐    POST /chaos-now      ┌──────────────┐
-│  UI / API   │───────────────────────▶ │  lib/chaos   │
-└─────────────┘                          └──────┬───────┘
-       ▲                                        │ applyChaos
-       │ SSE                                    ▼
-┌──────┴───────┐                          ┌─────────────────┐
-│ realtime bus │ ◀── publish('chaos')──── │ writes Health + │
-│ (in-proc)    │     publish('health')    │ openIncident()  │
-└──────┬───────┘                          └────────┬────────┘
-       │ subscribe                                 │
-       ▼                                           ▼
- ┌─────────────────┐   probe loop      ┌──────────────────────┐
- │ /events SSE     │ ─── publish ───── │ lib/probes           │
- │ (per-arch)      │                   │   → recordHealth     │
- └─────────────────┘                   │   → evaluateRules    │
-                                       └──────────┬───────────┘
-                                                  │ opens
-                                                  ▼
-                                       ┌──────────────────────┐
-                                       │ lib/incidents        │
-                                       │   ├ snapshotForIncident
-                                       │   ├ dispatch (notify)
-                                       │   └ publish('incident_*')
-                                       └──────────┬───────────┘
-                                                  │ on RCA-button
-                                                  ▼
-                                       ┌──────────────────────┐
-                                       │ lib/rca → openrouter │
-                                       │ lib/fix-pr           │
-                                       └──────────────────────┘
+
+---
+
+## Observability loop
+
+The platform continuously watches each architecture: probes write health records, alert rules fire incidents, and the realtime bus pushes state changes to every connected client without polling.
+
+```mermaid
+sequenceDiagram
+  participant Cron as Cron / Worker
+  participant Probes as Probe engine
+  participant Rules as Alert rules
+  participant Inc as Incidents
+  participant RT as Realtime SSE
+  participant UI as Dashboard
+
+  loop Every probe interval
+    Probes->>Probes: HTTP / TCP check per service
+    Probes->>Probes: recordHealth + history
+    Probes->>Rules: evaluateRulesForService
+    Rules-->>Inc: openIncident (deduped)
+    Inc->>RT: publish health / incident events
+    RT->>UI: SSE multiplexed channel
+  end
+
+  Cron->>Probes: runDueSchedules (chaos drills)
+  Note over Cron,Probes: kill_service · degrade · latency_spike
 ```
 
-## `lib/` module map
+**Probe engine** — Each service can run multiple HTTP or TCP probes. Results aggregate into a health status and response-time history. When no endpoint is reachable, a deterministic simulator keeps the demo mesh alive.
 
-| Module | Owns | Tested in |
+**Alert rules** — A JSON DSL evaluates after every probe: `status_eq`, `p95_latency_gt`, `error_rate_gt`, `consecutive_down`, `regression_failed`. Rules support `forDuration` windows and auto-resolve when conditions clear.
+
+**Chaos drills** — Scheduled or manual fault injection (`kill_service`, `degrade`, `latency_spike`) writes synthetic health degradation and can open critical incidents — useful for validating the full incident → RCA → notification path.
+
+---
+
+## Incident lifecycle
+
+Incidents are first-class objects with a state machine, audit timeline, log snapshot at open time, and multi-channel notification dispatch.
+
+```mermaid
+stateDiagram-v2
+  [*] --> open: alert rule / chaos / manual trigger
+  open --> acknowledged: ack (UI or magic link)
+  acknowledged --> resolved: resolve with note
+  resolved --> [*]
+
+  open --> open: comment
+  acknowledged --> acknowledged: comment / assign
+```
+
+When an incident opens:
+
+1. **Dedup** — Same service + rule within a cooldown window merges into the existing open incident.
+2. **Log snapshot** — Warn/error lines from the affected service and 1-hop neighbors are captured and stored on the timeline.
+3. **Notifications** — In-app feed, email (Resend), and Slack (Block Kit + magic-link ack) fire through a provider abstraction.
+4. **Realtime** — `incident_opened` events propagate over SSE so topology nodes pulse and the notification bell updates live.
+
+Resolution notes are persisted and feed the **runbook memory** used in future RCA prompts on the same service.
+
+---
+
+## AI root-cause analysis
+
+RCA is request-driven and streams token-by-token over SSE. The pipeline assembles evidence from multiple subsystems before calling the LLM.
+
+```mermaid
+flowchart LR
+  subgraph Inputs
+    I[Incident metadata]
+    H[30-min health window]
+    N[1-hop neighbor health]
+    L[Log snapshot at open]
+    R[Failed regression steps]
+    P[Prior resolved incidents]
+  end
+
+  subgraph RCA pipeline
+    AC[assembleContext]
+    BP[buildPrompt]
+    ST[streamChat via OpenRouter]
+    DB[(Persist rcaMarkdown)]
+  end
+
+  I & H & N & L & R & P --> AC
+  AC --> BP
+  BP --> ST
+  ST -->|SSE deltas| UI[Incident detail UI]
+  ST --> DB
+```
+
+### Context assembly
+
+| Signal | Source | Purpose |
 |---|---|---|
-| `prisma.ts` | Singleton Prisma client | — |
-| `auth.ts` | NextAuth config (credentials + GitHub + Google) | — |
-| `auth-helpers.ts` | Membership-aware `requireOwned*()` guards for route handlers | indirectly via E2E |
-| `membership.ts` | Role ranking (`owner / editor / viewer`), invite / setRole / remove, self-heal for legacy creators, `listForUser()` | `tests/membership.test.ts` |
-| `audit.ts` | Append-only `AuditEvent` writer + IP/UA extractor | — |
-| `utils.ts` | `cn`, `parseJson<T>`, `stringify`, `formatRelative` | — |
-| `types.ts` | Cross-cutting type aliases | — |
-| `realtime.ts` | In-process pub/sub bus (`globalThis`-cached EventEmitter); `publish()` / `subscribe()` per architecture | indirectly via E2E |
-| `jobs.ts` | `Job` table queue with retry/backoff; `registerHandler` / `enqueue` / `drain` / `startWorkerLoop` | — |
-| `git-analyzer.ts` | URL validator (SSRF guard) + sandboxed shallow clone + 50 MB size cap + 30s timeout + key-file extractor | `tests/membership.test.ts` (URL validator) |
-| `code-analyzer.ts` | Heuristic framework detection per language | `tests/code-analyzer.test.ts` |
-| `openrouter.ts` | One-shot OpenRouter calls (analyze service / discover flows / summarize regression) with heuristic fallback | — |
-| `openrouter-stream.ts` | Streaming chat-completions (async generator) + non-streaming `chatOnce`; 429/5xx auto-fall-back to heuristic | indirectly via RCA tests |
-| `topology-builder.ts` | Service → React Flow graph + `ServiceDependency` derivation | `tests/topology-builder.test.ts` |
-| `architecture-templates.ts` | Phase 5 starter templates (Blank / E-commerce / SaaS / Streaming) | — |
-| `health-monitor.ts` | Real HTTP probe + deterministic simulator + `recordHealth()` + emits `health` on realtime | `tests/health-monitor.test.ts` |
-| `probes.ts` | Multi-probe-per-service aggregator (http/tcp/ping), `probeService()` falls back to simulator, kicks `evaluateRulesForService` | — |
-| `alert-rules.ts` | Pure `evaluate(condition, ctx)` + runtime `evaluateRulesForService()` (forDuration / auto-resolve) | `tests/alert-rules.test.ts` |
-| `incidents.ts` | Lifecycle helpers (`openIncident` with dedup, `ackIncident`, `resolveIncident`, `commentOnIncident`, `triggerSyntheticIncident`) + log snapshot + dispatch + realtime emit | E2E |
-| `logs.ts` | HEC-style ingest, search, `snapshotForIncident` (1-hop neighbors), token generator | `tests/logs.test.ts` |
-| `log-generator.ts` | Deterministic synthetic log generator (status-biased error rate) | `tests/logs.test.ts` |
-| `regression-engine.ts` | Flow discovery + execution (mocked outcomes; flag stays `simulated: true`) | `tests/topology-builder.test.ts` indirectly |
-| `rca.ts` | Prompt assembly (incident + health window + neighbors + logs + failed regressions + runbook RAG) + `streamRcaInto` | `tests/rca-fixpr.test.ts` |
-| `fix-pr.ts` | Second-pass LLM call with structured JSON output + zod validation + patch renderer | `tests/rca-fixpr.test.ts` |
-| `chaos.ts` | Schedule grammar (`every Nm/h/s` \| `HH:MM`), `isDue`, action runtime (`kill_service / degrade / latency_spike`), `runDueSchedules` | `tests/chaos.test.ts` |
-| `notify/` | Provider abstraction (`inapp / email / slack / console`), `dispatch()` per arch routing, JWT magic-link ack | `tests/notify-tokens.test.ts` |
-| `hooks/use-architecture-events.ts` | Client SSE subscriber with exponential reconnect | E2E |
+| Incident metadata | `Incident` row | Title, severity, service, rule summary |
+| Health window | Last 30 min of `HealthRecord` on affected service | Status transitions, latency spikes |
+| Neighbor health | `ServiceDependency` graph (1-hop) | Blast-radius — upstream/downstream degradation |
+| Log snapshot | Captured at `openIncident` | Warn/error lines with timestamps |
+| Failed regressions | Latest `RegressionRun` failed steps | Contract / flow breakage evidence |
+| Runbook memory | Prior resolved incidents on same service | Keyword-overlap ranking of past resolutions |
 
-## API route map
+### Prompt structure
 
-```
-/api/auth/[...nextauth]                 NextAuth
-/api/architectures                      GET (list via membership) / POST (create + owner-membership)
-/api/architectures/:id                  GET / DELETE
-/api/architectures/:id/services         POST
-/api/architectures/:id/topology         GET
-/api/architectures/:id/analyze          POST (clone + analyze every service)
-/api/architectures/:id/health           GET / POST (probeArchitecture)
-/api/architectures/:id/regression       GET / POST
-/api/architectures/:id/regression/:run  GET
-/api/architectures/:id/incidents        GET
-/api/architectures/:id/alert-rules      GET / POST
-/api/architectures/:id/synthetic-incident POST
-/api/architectures/:id/chaos-schedules  GET / POST
-/api/architectures/:id/chaos-now        POST
-/api/architectures/:id/logs             GET (search)
-/api/architectures/:id/logs/tail        SSE
-/api/architectures/:id/logs/generate    POST (synthetic burst)
-/api/architectures/:id/events           SSE (multiplexed realtime)
-/api/architectures/:id/members          GET / POST / PATCH / DELETE  (owner-only mutations)
-/api/architectures/:id/audit            GET
-/api/architectures/:id/settings         PATCH (slackWebhookUrl, notificationsEmail)
+The model receives a structured user message with labeled sections (health, neighbors, logs, regressions, prior resolutions) and is instructed to produce three markdown sections: **Likely root cause**, **Evidence** (citing specific timestamps), and **Suggested next steps**. Temperature is kept low (0.2) to reduce hallucination.
 
-/api/services/:id/probes                GET / POST
-/api/probes/:id                         PATCH / DELETE / POST (run-now)
-/api/services/:id/logs                  POST (HEC-style, bearer token)
-/api/services/:id/ingest-token          GET / POST (rotate)
+### Streaming and persistence
 
-/api/incidents/:id                      GET
-/api/incidents/:id/ack | resolve | assign | comment   POST
-/api/incidents/:id/rca                  POST (SSE)
-/api/incidents/:id/fix-pr               GET / POST
+`POST /api/incidents/:id/rca` opens an SSE stream. Each token delta is forwarded to the client; the assembled markdown is incrementally persisted to `Incident.rcaMarkdown`. Timeline events `rca_started` and `rca_completed` are written for audit.
 
-/api/alert-rules/:id                    PATCH / DELETE
-/api/chaos-schedules/:id                PATCH / DELETE
-/api/notifications                      GET / POST (mark all read)
-/api/notifications/:id/read             POST
-/api/me/notification-pref               GET / PUT
-/api/notify/ack                         GET (magic link)
-/api/search                             GET (palette)
-/api/cron/tick                          GET / POST (external scheduler entry)
+When OpenRouter is unavailable or rate-limited, a heuristic fallback still streams word-by-word so the incident workflow remains demonstrable.
+
+---
+
+## Fix-PR generation
+
+A second LLM pass turns the RCA into actionable code changes.
+
+```mermaid
+sequenceDiagram
+  participant UI as Incident UI
+  participant API as /fix-pr
+  participant LLM as OpenRouter
+  participant GH as GitHub App
+
+  UI->>API: POST generate
+  API->>LLM: RCA + service context → structured JSON
+  LLM-->>API: branchName, files[], prTitle, prBody
+  API-->>UI: Render per-file diff hunks
+  opt GITHUB_APP configured
+    API->>GH: Create draft PR
+  end
 ```
 
-## Phase-by-phase what shipped
+Output schema: `{ branchName, files[{ path, content }], prTitle, prBody }`. The UI renders color-coded hunks with **Copy as patch** and **Download .patch**. With `GITHUB_APP_*` credentials, the platform can open a real draft PR on the linked repository.
 
-See the top of the codebase: `implementation_plan.md` (the original eight-phase plan) and `README.md` (status). All eight phases are merged on this branch.
+---
+
+## Topology and Git analysis
+
+```mermaid
+flowchart TB
+  Repo[Git remote URL] --> Clone[Sandboxed shallow clone]
+  Clone --> Extract[Key-file extraction]
+  Extract --> Heuristic[Heuristic framework detection]
+  Extract --> LLM[OpenRouter service summary]
+  Heuristic & LLM --> Graph[Topology builder]
+  Graph --> RF[React Flow visualization]
+  Graph --> Deps[ServiceDependency edges]
+```
+
+Clone operations are guarded: URL validation (SSRF protection), size cap (50 MB), and timeout (30 s). The topology builder derives dependency edges from import/call patterns and renders an interactive graph with live health overlays.
+
+---
+
+## Realtime architecture
+
+```mermaid
+flowchart LR
+  Publishers[Probes · Incidents · Chaos · Health] --> Bus[In-process pub/sub]
+  Bus --> SSE[/api/architectures/:id/events]
+  SSE --> Clients[Browser tabs]
+```
+
+The realtime bus is an `EventEmitter` cached on `globalThis` so it survives Next.js HMR during development. Events are multiplexed on a single SSE connection per architecture: `health`, `incident_*`, `chaos`, `notification`.
+
+**Deployment note:** On multi-instance serverless (e.g. Vercel), SSE fan-out is per-instance. Cross-tab live pulses require swapping the bus for Redis pub/sub — the `publish` / `subscribe` interface is designed for that swap.
+
+---
+
+## Authentication and multi-tenancy
+
+- **NextAuth** — Credentials (seeded demo user), optional GitHub OAuth, optional Google OAuth.
+- **Membership** — Per-architecture roles: `owner`, `editor`, `viewer`. Mutations are guarded and logged to an append-only audit trail.
+- **Log ingest** — Per-service bearer tokens for HEC-style `POST /api/services/:id/logs`.
+
+---
+
+## Background processing
+
+| Mechanism | Responsibility |
+|---|---|
+| `/api/cron/tick` | Drain due chaos schedules + job queue |
+| `npm run worker` | Self-hosted equivalent on a configurable interval |
+| `lib/jobs.ts` | In-process queue with retry/backoff (Redis/BullMQ swap-in ready) |
+
+---
+
+## Module reference
+
+Platform logic lives in `lib/`; API routes are thin handlers. Key modules:
+
+| Area | Modules |
+|---|---|
+| Observability | `probes.ts`, `health-monitor.ts`, `alert-rules.ts`, `logs.ts`, `log-generator.ts` |
+| Incidents | `incidents.ts`, `rca.ts`, `fix-pr.ts`, `notify/` |
+| Topology | `git-analyzer.ts`, `code-analyzer.ts`, `topology-builder.ts`, `openrouter.ts` |
+| Chaos | `chaos.ts` |
+| Platform | `realtime.ts`, `jobs.ts`, `membership.ts`, `audit.ts`, `auth.ts` |
+| AI transport | `openrouter-stream.ts` |
+
+Regression flow discovery runs through `regression-engine.ts` (simulated outcomes in the stock build).
+
+---
+
+## Related docs
+
+- **[LOCAL_SETUP.md](./LOCAL_SETUP.md)** — clone, database, env, commands
+- **[env_get.md](./env_get.md)** — where every env value comes from
+- **[deploy_vercel.md](./deploy_vercel.md)** — production deploy, cron, caveats

@@ -2,9 +2,8 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
 import { authOptions } from '@/lib/auth';
-import { cloneShallow, extractKeyFiles, cleanup } from '@/lib/git-analyzer';
-import { heuristicAnalyze } from '@/lib/code-analyzer';
-import { analyzeServiceWithAI, isAIEnabled } from '@/lib/openrouter';
+import { ingestService } from '@/lib/ingest/ingest-service';
+import { saveContract } from '@/lib/ingest/persist';
 import { stringify } from '@/lib/utils';
 import { buildTopology } from '@/lib/topology-builder';
 
@@ -25,34 +24,10 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
 
   const pending = architecture.services.filter((s) => s.analysisStatus !== 'completed');
   for (const svc of pending) {
-    let tmp: string | null = null;
     try {
-      await prisma.service.update({ where: { id: svc.id }, data: { analysisStatus: 'cloning' } });
-      tmp = await cloneShallow(svc.repoUrl, svc.branch);
       await prisma.service.update({ where: { id: svc.id }, data: { analysisStatus: 'analyzing' } });
-      const files = await extractKeyFiles(tmp);
-
-      const result = isAIEnabled()
-        ? await analyzeServiceWithAI(svc.name, files).catch(() => heuristicAnalyze(svc.name, files))
-        : heuristicAnalyze(svc.name, files);
-
-      await prisma.service.update({
-        where: { id: svc.id },
-        data: {
-          analysisStatus: 'completed',
-          analysisResult: stringify(result),
-          language: result.language,
-          framework: result.framework,
-          summary: result.summary,
-          producesEvents: stringify(result.producesEvents ?? []),
-          consumesEvents: stringify(result.consumesEvents ?? []),
-          exposesApis: stringify(result.exposesApis ?? []),
-          consumesApis: stringify(result.consumesApis ?? []),
-          databases: stringify(result.databases ?? []),
-          kafkaTopics: stringify(result.kafkaTopics ?? []),
-          healthEndpoint: result.healthEndpoint ?? null,
-        },
-      });
+      const contract = await ingestService({ repoUrl: svc.repoUrl, branch: svc.branch });
+      await saveContract(svc.id, contract);
     } catch (err) {
       await prisma.service.update({
         where: { id: svc.id },
@@ -61,12 +36,9 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
           analysisResult: stringify({ error: err instanceof Error ? err.message : 'unknown' }),
         },
       });
-    } finally {
-      if (tmp) await cleanup(tmp);
     }
   }
 
-  // Rebuild topology + dependencies
   const services = await prisma.service.findMany({ where: { architectureId: params.id } });
   const { graph, dependencies } = buildTopology(services);
 
