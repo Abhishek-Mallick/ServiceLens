@@ -10,37 +10,51 @@ The RCA and fix-PR pipeline is informed by models and investigative patterns tra
 
 ---
 
+## Architecture
+
+ServiceLens follows a hub-and-spoke model: a thin API layer over a testable platform core, with an in-process realtime bus fanning events to SSE clients and external services handling AI, notifications, and Git operations.
+
+```mermaid
+flowchart LR
+  UI[Dashboard] <-->|REST + SSE| API[Next.js API]
+  API --> Core[Platform core]
+  Core --> DB[(PostgreSQL)]
+  Core --> Git[Git remotes]
+  Core --> LLM[OpenRouter]
+  Core --> Notify[Resend · Slack]
+  Cron[Cron / Worker] --> API
+  Train[Incident Triage Env] -.->|trained patterns| Core
+```
+
+| Layer | Components |
+|---|---|
+| **Clients** | Web dashboard, external cron/worker, HEC log ingest from service teams |
+| **Platform core** | Topology discovery · probe engine · alert rules · incident lifecycle · RCA + fix-PR · realtime SSE bus |
+| **Data** | PostgreSQL — architectures, services, dependency graph, health, incidents, logs, audit |
+| **External** | Git remotes · OpenRouter · Resend · Slack · GitHub OAuth/App |
+| **Training** | [Incident Triage Env](https://huggingface.co/spaces/AbhishekMallick/incident-triage-env) — OpenEnv RL simulator that shapes RCA investigative patterns |
+
+Full diagrams — observability loop, incident lifecycle, RCA pipeline, fix-PR flow: **[`docs/architecture.md`](./docs/architecture.md)** · Eraser prompt: **[`docs/architecture-prompt.md`](./docs/architecture-prompt.md)**
+
+---
+
 ## Capabilities
 
-### Service topology
-Clone and analyze Git-backed repositories to infer frameworks, contracts, and dependency edges. The result is an interactive service graph with live health overlays — see upstream/downstream blast radius at a glance.
-
-### Health monitoring and probes
-HTTP and TCP probes run per service with aggregated status, response-time history, and sparkline trends. When endpoints are unreachable, a deterministic simulator keeps demo architectures observable.
-
-### Declarative alert rules
-A JSON DSL evaluates after every probe cycle: status checks, latency thresholds, error rates, consecutive failures, and regression failures. Rules support duration windows and auto-resolve when conditions clear.
-
-### Incident management
-Full lifecycle — open → acknowledged → resolved — with deduplication, assignment, comments, audit timeline, and log snapshots captured at incident open. Resolution notes become **runbook memory** for future incidents on the same service.
-
-### AI root-cause analysis
-On incident open, the platform assembles a rich context window (health history, 1-hop neighbor status, log lines, failed regression steps, prior resolutions) and streams an LLM-generated RCA over SSE. Output is structured markdown: likely root cause, cited evidence, and concrete next steps. The investigative workflow — trace dependencies, correlate logs and metrics, assess blast radius, propose remediation — mirrors the action surface agents are trained on in the [Incident Triage Environment](#incident-triage-environment-openenv).
-
-### Fix-PR generation
-A second LLM pass produces structured patch output — branch name, per-file hunks, PR title and body, blast-radius estimate. Render in the UI with copy/download, or open a draft PR via GitHub App integration. The structured output schema aligns with the **PR-proposal** and **blast-radius** grading heads from the training environment's 4-head composite scorer.
-
-### Chaos engineering
-Schedule or manually trigger fault injection (`kill_service`, `degrade`, `latency_spike`) to validate the full detect → incident → notify → RCA path without waiting for production failures.
-
-### Log aggregation
-HEC-style ingest with per-service bearer tokens, searchable history, SSE live tail, and synthetic log generation correlated with service health.
-
-### Notifications and realtime
-In-app notification feed, Resend email, Slack webhooks with magic-link acknowledge, and a multiplexed SSE channel for live topology pulses, health updates, and bell notifications — no polling.
-
-### Multi-user workspaces
-Per-architecture membership with owner / editor / viewer roles. Every mutating action is recorded in an append-only audit log.
+| Area | Capability | Highlights |
+|---|---|---|
+| **Discovery** | Service topology | Git-backed clone + analysis; infers frameworks, API contracts, event flows, and dependency edges into an interactive graph with live health overlays |
+| **Observability** | Health probes | HTTP/TCP per service; aggregated status, response-time history, sparklines; simulator fallback when endpoints are unreachable |
+| **Observability** | Alert rules | JSON DSL (`status_eq`, `p95_latency_gt`, `error_rate_gt`, `consecutive_down`, `regression_failed`); duration windows + auto-resolve |
+| **Observability** | Log aggregation | HEC-style bearer-token ingest, search, SSE live tail, synthetic logs correlated with health |
+| **Observability** | Regression testing | Flow discovery + contract validation across the service mesh |
+| **Reliability** | Incident management | Lifecycle `open → acknowledged → resolved`; dedup, assignment, comments, audit timeline, open-time log snapshot |
+| **Reliability** | Runbook memory | Resolution notes from past incidents feed future RCA via keyword-overlap retrieval |
+| **Reliability** | Chaos engineering | Scheduled or manual `kill_service` / `degrade` / `latency_spike` to validate detect → incident → RCA end-to-end |
+| **AI SRE** | Root-cause analysis | 6-signal context assembly (health, neighbors, logs, regressions, runbook); streamed markdown RCA over SSE |
+| **AI SRE** | Fix-PR generation | Structured patch JSON — branch, per-file hunks, PR title/body, blast radius; copy/download or GitHub draft PR |
+| **Realtime** | Live updates | Multiplexed SSE — topology pulses, health changes, incident bell; no polling |
+| **Realtime** | Notifications | In-app feed, Resend email, Slack webhooks with magic-link acknowledge |
+| **Platform** | Multi-user workspaces | Per-architecture `owner` / `editor` / `viewer` roles; append-only audit log on every mutation |
 
 ---
 
@@ -161,31 +175,13 @@ Sign in with `demo@servicelens.com` / `demo123`.
 
 ---
 
-## Architecture
-
-ServiceLens follows a hub-and-spoke model: a thin API layer over a testable `lib/` core, with an in-process realtime bus fanning events to SSE clients and external services handling AI, notifications, and Git operations.
-
-```mermaid
-flowchart LR
-  UI[Dashboard] <-->|REST + SSE| API[Next.js API]
-  API --> Core[Platform core]
-  Core --> DB[(PostgreSQL)]
-  Core --> Git[Git remotes]
-  Core --> LLM[OpenRouter]
-  Core --> Notify[Resend · Slack]
-  Cron[Cron / Worker] --> API
-```
-
-Detailed diagrams — observability loop, incident lifecycle, RCA pipeline, fix-PR flow, realtime bus, topology analysis: **[`docs/architecture.md`](./docs/architecture.md)**.
-
----
-
 ## Documentation
 
 | Doc | Contents |
 |---|---|
 | [`docs/LOCAL_SETUP.md`](./docs/LOCAL_SETUP.md) | Local environment, database, commands, demo login |
 | [`docs/architecture.md`](./docs/architecture.md) | System design, data flows, RCA pipeline, module reference |
+| [`docs/architecture-prompt.md`](./docs/architecture-prompt.md) | Eraser AI prompt for consolidated architecture diagram |
 | [`docs/env_get.md`](./docs/env_get.md) | Where every environment variable comes from |
 | [`docs/deploy_vercel.md`](./docs/deploy_vercel.md) | Production deployment and cron setup |
 | [Incident Triage Env](https://github.com/deepraj21/Incident-Triage-Env/tree/feat/incident-triage-env) | OpenEnv RL environment for training incident-response agents |
