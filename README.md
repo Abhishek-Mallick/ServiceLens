@@ -14,17 +14,7 @@ The RCA and fix-PR pipeline is informed by models and investigative patterns tra
 
 ServiceLens follows a hub-and-spoke model: a thin API layer over a testable platform core, with an in-process realtime bus fanning events to SSE clients and external services handling AI, notifications, and Git operations.
 
-```mermaid
-flowchart LR
-  UI[Dashboard] <-->|REST + SSE| API[Next.js API]
-  API --> Core[Platform core]
-  Core --> DB[(PostgreSQL)]
-  Core --> Git[Git remotes]
-  Core --> LLM[OpenRouter]
-  Core --> Notify[Resend · Slack]
-  Cron[Cron / Worker] --> API
-  Train[Incident Triage Env] -.->|trained patterns| Core
-```
+<img width="1925" height="1892" alt="image" src="https://github.com/user-attachments/assets/4ff8e3db-add3-4dda-86c9-cbd7a018cc22" />
 
 | Layer | Components |
 |---|---|
