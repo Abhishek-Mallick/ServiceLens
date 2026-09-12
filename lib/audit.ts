@@ -11,7 +11,7 @@ export type AuditAction =
   // membership
   | 'member.invite' | 'member.remove' | 'member.role_change'
   // services
-  | 'service.add' | 'service.delete' | 'service.analyze'
+  | 'service.add' | 'service.update' | 'service.delete' | 'service.analyze'
   // probes
   | 'probe.create' | 'probe.update' | 'probe.delete' | 'probe.run_now'
   // alert rules
@@ -22,7 +22,13 @@ export type AuditAction =
   // chaos
   | 'chaos.now' | 'chaos.schedule.create' | 'chaos.schedule.update' | 'chaos.schedule.delete'
   // logs
-  | 'logs.ingest' | 'logs.token.rotate';
+  | 'logs.ingest' | 'logs.token.rotate'
+  // on-call
+  | 'oncall.update'
+  // api keys
+  | 'apikey.create' | 'apikey.revoke'
+  // topology + testing
+  | 'topology.edit' | 'contract_tests.run';
 
 export interface AuditInput {
   action: AuditAction;

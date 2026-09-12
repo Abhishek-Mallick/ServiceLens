@@ -1,5 +1,6 @@
 import { ingestForService, type IngestEntry } from './logs';
 import { prisma } from './prisma';
+import { assertDemoArchitecture } from './demo';
 
 // Stable per-name RNG so generated logs feel consistent.
 function hash32(str: string): number {
@@ -74,6 +75,7 @@ export function generateEntries(serviceName: string, status: 'healthy' | 'degrad
 }
 
 export async function generateForArchitecture(architectureId: string, windowSec = 3600, perService = 80) {
+  await assertDemoArchitecture(architectureId, 'Synthetic log generation');
   const services = await prisma.service.findMany({
     where: { architectureId },
     select: { id: true, name: true, healthStatus: true },

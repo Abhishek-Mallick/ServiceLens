@@ -5,6 +5,7 @@ import { inappChannel } from './channels/inapp';
 import { slackChannel } from './channels/slack';
 import { consoleChannel } from './channels/console';
 import { signAckToken } from './tokens';
+import { decryptSecret } from '@/lib/secrets';
 
 const SEVERITY_RANK: Record<Severity, number> = { info: 0, warning: 1, critical: 2 };
 
@@ -31,9 +32,97 @@ async function getChannel(kind: ChannelKind): Promise<NotificationChannel | null
   return null;
 }
 
-// Resolve the channel set, recipients, and dispatch. The `channels` arg comes
-// from AlertRule.channels JSON; we always tack on `inapp` for the owner and
-// `console` as a no-op telemetry sink so dev environments still see traffic.
+// ─────────────────────────────────────────────────────────────────────────────
+// Recipient resolution (pure — see tests/notify-recipients.test.ts)
+//
+//   in-app : every member (demo architectures: owner only, so the shared
+//            showcase doesn't flood every signup's bell)
+//   email  : editors/owners + the architecture alias, each filtered by their
+//            own severity / quiet-hours / email prefs — only when the rule asks
+//            for email. The on-call engineer from the roster is always emailed
+//            for Opened/Escalated (paging is the point of the directory), plus
+//            the escalation contact on Escalated.
+//   slack  : the architecture webhook, gated by the owner's prefs
+// ─────────────────────────────────────────────────────────────────────────────
+export interface MemberInfo {
+  userId: string;
+  email: string | null;
+  role: string;
+  pref: { emailEnabled: boolean; slackEnabled: boolean; minSeverity: string; quietHoursStart: number | null; quietHoursEnd: number | null } | null;
+}
+
+export interface RecipientInput {
+  demo: boolean;
+  ownerId: string;
+  notificationsEmail: string | null;
+  slackWebhookUrl: string | null;
+  members: MemberInfo[];
+  oncall: { name: string; email: string; escalationEmail: string | null } | null;
+  template: NotificationMessage['template'];
+  severity: Severity;
+  requested: ChannelKind[];
+  nowUtcHour: number;
+}
+
+export interface ResolvedRecipients {
+  userIds: string[];
+  emails: Array<{ email: string; userId: string | null }>;
+  slackWebhookUrl: string | null;
+}
+
+function prefAllows(pref: MemberInfo['pref'], severity: Severity, hour: number, kind: 'email' | 'slack'): boolean {
+  if (!pref) return true;
+  if (kind === 'email' && !pref.emailEnabled) return false;
+  if (kind === 'slack' && !pref.slackEnabled) return false;
+  if (SEVERITY_RANK[severity] < SEVERITY_RANK[(pref.minSeverity as Severity) ?? 'info']) return false;
+  if (pref.quietHoursStart != null && pref.quietHoursEnd != null) {
+    const { quietHoursStart: a, quietHoursEnd: b } = pref;
+    const quiet = a <= b ? hour >= a && hour < b : hour >= a || hour < b;
+    if (quiet) return false;
+  }
+  return true;
+}
+
+export function resolveRecipients(input: RecipientInput): ResolvedRecipients {
+  const owner = input.members.find((m) => m.userId === input.ownerId) ?? { userId: input.ownerId, email: null, role: 'owner', pref: null };
+  const audience = input.demo ? [owner] : input.members;
+
+  const userIds = Array.from(new Set(audience.map((m) => m.userId)));
+
+  const emails = new Map<string, string | null>(); // email → userId
+  const add = (email: string | null | undefined, userId: string | null) => {
+    if (!email) return;
+    const key = email.trim().toLowerCase();
+    if (!emails.has(key)) emails.set(key, userId);
+  };
+
+  if (input.requested.includes('email')) {
+    for (const m of audience) {
+      if (m.role !== 'owner' && m.role !== 'editor') continue;
+      if (!prefAllows(m.pref, input.severity, input.nowUtcHour, 'email')) continue;
+      add(m.email, m.userId);
+    }
+    if (input.notificationsEmail && prefAllows(owner.pref, input.severity, input.nowUtcHour, 'email')) add(input.notificationsEmail, null);
+  }
+
+  if (input.oncall && !input.demo) {
+    const match = input.members.find((m) => m.email?.toLowerCase() === input.oncall!.email.toLowerCase());
+    if (input.template === 'IncidentOpened' || input.template === 'IncidentEscalated') add(input.oncall.email, match?.userId ?? null);
+    if (input.template === 'IncidentEscalated') add(input.oncall.escalationEmail, null);
+    // Keep the paged engineer in the loop on ack/resolve when email is on.
+    if ((input.template === 'IncidentAcknowledged' || input.template === 'IncidentResolved' || input.template === 'FixPRReady') && input.requested.includes('email')) {
+      add(input.oncall.email, match?.userId ?? null);
+    }
+  }
+
+  const slack =
+    input.requested.includes('slack') && input.slackWebhookUrl && prefAllows(owner.pref, input.severity, input.nowUtcHour, 'slack')
+      ? input.slackWebhookUrl
+      : null;
+
+  return { userIds, emails: Array.from(emails, ([email, userId]) => ({ email, userId })), slackWebhookUrl: slack };
+}
+
 export interface DispatchInput {
   architectureId: string;
   incidentId?: string;
@@ -51,10 +140,17 @@ export async function dispatch(input: DispatchInput): Promise<void> {
     select: {
       id: true,
       name: true,
+      demo: true,
       userId: true,
       slackWebhookUrl: true,
       notificationsEmail: true,
-      user: { select: { id: true, email: true } },
+      members: {
+        select: {
+          role: true,
+          user: { select: { id: true, email: true, notificationPref: true } },
+        },
+      },
+      user: { select: { id: true, email: true, notificationPref: true } },
     },
   });
   if (!arch) return;
@@ -62,24 +158,32 @@ export async function dispatch(input: DispatchInput): Promise<void> {
   const incident = input.incidentId
     ? await prisma.incident.findUnique({
         where: { id: input.incidentId },
-        include: { service: { select: { name: true } } },
+        include: { service: { select: { name: true } }, oncall: true },
       })
     : null;
 
-  // Per-user preferences for the architecture owner (only recipient in v1 — multi-user is Phase 7).
-  const pref = await prisma.userNotificationPref.findUnique({ where: { userId: arch.userId } });
-  const minRank = SEVERITY_RANK[(pref?.minSeverity as Severity | undefined) ?? 'info'];
-  const passesSeverity = SEVERITY_RANK[input.severity] >= minRank;
+  const members: MemberInfo[] = arch.members.map((m) => ({ userId: m.user.id, email: m.user.email, role: m.role, pref: m.user.notificationPref }));
+  if (!members.some((m) => m.userId === arch.userId)) {
+    members.push({ userId: arch.user.id, email: arch.user.email, role: 'owner', pref: arch.user.notificationPref });
+  }
 
-  const inQuietHours = (() => {
-    if (pref?.quietHoursStart == null || pref?.quietHoursEnd == null) return false;
-    const hour = new Date().getUTCHours();
-    const start = pref.quietHoursStart;
-    const end = pref.quietHoursEnd;
-    return start <= end ? hour >= start && hour < end : hour >= start || hour < end;
-  })();
+  const resolved = resolveRecipients({
+    demo: arch.demo,
+    ownerId: arch.userId,
+    notificationsEmail: arch.notificationsEmail,
+    slackWebhookUrl: decryptSecret(arch.slackWebhookUrl),
+    members,
+    oncall: incident?.oncall ? { name: incident.oncall.name, email: incident.oncall.email, escalationEmail: incident.oncall.escalationEmail } : null,
+    template: input.template,
+    severity: input.severity,
+    requested: input.channels,
+    nowUtcHour: new Date().getUTCHours(),
+  });
 
-  const ackToken = input.incidentId ? signAckToken(input.incidentId, arch.userId) : undefined;
+  const ackTokens: Record<string, string> = {};
+  if (input.incidentId) {
+    for (const r of resolved.emails) ackTokens[r.email] = signAckToken(input.incidentId, r.userId, r.userId ? null : r.email);
+  }
   const absHref = input.href.startsWith('http') ? input.href : `${process.env.NEXT_PUBLIC_APP_URL ?? ''}${input.href}`;
 
   const msg: NotificationMessage = {
@@ -89,11 +193,10 @@ export async function dispatch(input: DispatchInput): Promise<void> {
     severity: input.severity,
     href: absHref,
     recipients: {
-      userIds: [arch.userId],
-      emails: passesSeverity && !inQuietHours && (pref?.emailEnabled ?? true)
-        ? [arch.notificationsEmail || arch.user.email].filter((e): e is string => !!e)
-        : [],
-      slackWebhookUrl: passesSeverity && !inQuietHours && (pref?.slackEnabled ?? true) ? arch.slackWebhookUrl : null,
+      userIds: resolved.userIds,
+      emails: resolved.emails.map((r) => r.email),
+      ackTokens,
+      slackWebhookUrl: resolved.slackWebhookUrl,
     },
     incident: incident
       ? {
@@ -107,30 +210,25 @@ export async function dispatch(input: DispatchInput): Promise<void> {
           resolution: incident.resolution,
         }
       : undefined,
-    ackToken,
+    ackToken: input.incidentId ? signAckToken(input.incidentId, arch.userId) : undefined,
+    oncall: incident?.oncall ? { name: incident.oncall.name, email: incident.oncall.email } : null,
   };
 
-  // Always run inapp + console; add other requested channels gated by env/config availability.
   const ordered: ChannelKind[] = ['inapp'];
-  for (const c of input.channels) {
-    if (c === 'inapp' || c === 'console' || ordered.includes(c)) continue;
-    if (c === 'email' && msg.recipients.emails.length === 0) continue;
-    if (c === 'slack' && !msg.recipients.slackWebhookUrl) continue;
-    ordered.push(c);
-  }
+  if (msg.recipients.emails.length > 0) ordered.push('email');
+  if (msg.recipients.slackWebhookUrl) ordered.push('slack');
   ordered.push('console');
 
   for (const kind of ordered) {
     const ch = await getChannel(kind);
-    if (!ch) continue;
-    if (!ch.available()) {
+    if (!ch || !ch.available()) {
       await prisma.notificationLog.create({
         data: {
           incidentId: input.incidentId ?? null,
           channel: kind,
           status: 'skipped',
           template: input.template,
-          error: 'channel unavailable',
+          error: kind === 'email' ? 'RESEND_API_KEY not configured' : 'channel unavailable',
         },
       });
       continue;
@@ -161,7 +259,7 @@ export async function dispatch(input: DispatchInput): Promise<void> {
       data: {
         incidentId: input.incidentId,
         type: 'notification_sent',
-        payload: stringify({ template: input.template, channels: ordered }),
+        payload: stringify({ template: input.template, channels: ordered, emails: msg.recipients.emails.length, inapp: msg.recipients.userIds.length }),
       },
     });
   }

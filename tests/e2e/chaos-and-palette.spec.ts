@@ -7,8 +7,8 @@ test.describe('Chaos drill (manual trigger from Alerts page)', () => {
     const archId = await openSeededArchitecture(page);
     await page.goto(`/architectures/${archId}/alerts`);
 
-    // Chaos card lives on the Alerts page (Phase 6).
-    await expect(page.getByRole('heading', { name: /chaos drills/i })).toBeVisible();
+    // Chaos card lives on the Alerts page (demo architecture only). CardTitle is a div, not a heading.
+    await expect(page.getByText('Chaos drills', { exact: true }).first()).toBeVisible();
 
     // Pick the first service in the select, action kill_service, then Run now.
     const actionSelect = page.locator('select').nth(1);
@@ -41,8 +41,11 @@ test.describe('Command palette', () => {
     palette = page.getByPlaceholder(/search architectures, services, incidents/i);
     await expect(palette).toBeVisible({ timeout: 5_000 });
 
-    // Empty-query suggestion list includes the seeded architecture.
-    await expect(page.getByText(/e-commerce platform/i).first()).toBeVisible();
+    // Search rather than rely on the empty-query "recent" list, which only
+    // shows a few architectures. Wait for the palette's own results (not the
+    // dashboard behind it) before pressing Enter.
+    await palette.fill('E-Commerce');
+    await expect(page.getByRole('dialog').getByText(/e-commerce platform/i).first()).toBeVisible();
 
     // Hit Enter to navigate to the first hit.
     await palette.press('Enter');

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { demoOnlyResponse } from '@/lib/demo';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { requireSession, requireOwnedArchitecture } from '@/lib/auth-helpers';
@@ -27,8 +28,9 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await requireSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const arch = await requireOwnedArchitecture(params.id, session.user.id);
+  const arch = await requireOwnedArchitecture(params.id, session.user.id, 'editor');
   if (!arch) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (!arch.demo) return demoOnlyResponse('Chaos drills');
   const body = Input.parse(await req.json());
 
   if (!parseSchedule(body.schedule)) {

@@ -43,7 +43,18 @@ model Architecture {
   chaosSchedules ChaosSchedule[]
   members        ArchitectureMember[]
   auditEvents    AuditEvent[]
+  oncallSource   OncallSource?
+  apiKeys        ApiKey[]
+  edgeOverrides  EdgeOverride[]
+  // Open a draft fix PR automatically once the RCA is ready (needs the GitHub App).
+  autoFixPr      Boolean         @default(false)
+  // Run contract tests against deployed services every N minutes (0 = manual only).
+  contractTestIntervalMin Int    @default(0)
   status         String          @default("draft") // draft, analyzing, ready, error
+  // Showcase mesh. Only demo architectures may use simulated health, chaos,
+  // synthetic logs/incidents, and simulated regression. Real architectures
+  // only ever show data produced by real probes, ingest, and repos.
+  demo           Boolean         @default(false)
   topologyData   String? // JSON; cached topology graph data
   slackWebhookUrl String? // Phase 2: per-architecture Slack incoming webhook
   notificationsEmail String? // optional override; defaults to architecture owner email
@@ -58,7 +69,8 @@ model Service {
   branch          String               @default("main")
   provider        String               @default("github") // "github" | "bitbucket_soon" | "gitlab_soon"
   deployedUrl     String?
-  contract        ServiceContract?
+  healthPath      String               @default("/health") // appended to deployedUrl for the default probe
+  contract       ServiceContract?
   architectureId  String
   architecture    Architecture         @relation(fields: [architectureId], references: [id], onDelete: Cascade)
   analysisStatus  String               @default("pending") // pending, cloning, analyzing, completed, error
@@ -77,6 +89,12 @@ model Service {
   lastHealthCheck DateTime?
   simulated       Boolean              @default(false) // true when health/data is generated, not from real probes
   ingestToken     String?              @unique // bearer for HEC-style log ingestion (POST /api/services/:id/logs)
+  // Push-mode health (services on private networks call /api/v1/services/:name/heartbeat).
+  heartbeatAt      DateTime?
+  heartbeatStatus  String?  // healthy | degraded | down (as reported by the service)
+  heartbeatMessage String?
+  overridesFrom    EdgeOverride[] @relation("overrideFrom")
+  overridesTo      EdgeOverride[] @relation("overrideTo")
   dependencies    ServiceDependency[]  @relation("dependentService")
   dependents      ServiceDependency[]  @relation("dependencyService")
   healthHistory   HealthRecord[]
@@ -185,7 +203,8 @@ model Probe {
   timeoutSec     Int       @default(5)
   expectStatus   Int? // for http; default 2xx ok
   expectBodyRegex String?
-  headers        String? // JSON
+  headers        String? // JSON, encrypted at rest (enc:v1:…) — may carry auth tokens
+  secret         String? // encrypted connection string for postgres/redis probes; `target` holds a redacted copy
   enabled        Boolean   @default(true)
   lastRunAt      DateTime?
   createdAt      DateTime  @default(now())
@@ -242,6 +261,8 @@ model Incident {
   resolvedAt     DateTime?
   simulated      Boolean         @default(false)
   events         IncidentEvent[]
+  oncall         IncidentOncallAssignment?
+  remediations   Remediation[]
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 
@@ -392,4 +413,102 @@ model UserNotificationPref {
   quietHoursStart Int? // 0..23, local-time hour; null = always on
   quietHoursEnd   Int? // 0..23
   updatedAt       DateTime @updatedAt
+}
+
+// On-call directory for an architecture. v1 source: a Google Sheet published
+// to the web as CSV (columns: service_name, oncall_name, oncall_email,
+// escalation_email). The parsed roster is cached so paging never blocks on the sheet.
+model OncallSource {
+  id             String       @id @default(cuid())
+  architectureId String       @unique
+  architecture   Architecture @relation(fields: [architectureId], references: [id], onDelete: Cascade)
+  kind           String       @default("google_sheet_csv")
+  csvUrl         String
+  escalateAfterMin Int        @default(15) // page escalation_email if still unacknowledged after this long; 0 = never
+  rosterJson     String?      // JSON: RosterEntry[]
+  lastFetchedAt  DateTime?
+  lastError      String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+// Who was paged for an incident. Separate from Incident.assigneeId because the
+// on-call person may not be a ServiceLens user.
+model IncidentOncallAssignment {
+  id              String   @id @default(cuid())
+  incidentId      String   @unique
+  incident        Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  name            String
+  email           String
+  escalationEmail String?
+  source          String   // google_sheet_csv | manual
+  escalatedAt     DateTime?
+  at              DateTime @default(now())
+}
+
+// A code remediation for an incident: the draft PR ServiceLens opened from a
+// generated fix. The proposal itself lives on the `fix_pr_generated` event.
+model Remediation {
+  id           String    @id @default(cuid())
+  incidentId   String
+  incident     Incident  @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  kind         String    @default("code_pr")
+  status       String    // opening | opened | failed
+  repoFullName String?
+  baseBranch   String?
+  baseSha      String?
+  branch       String?
+  prNumber     Int?
+  prUrl        String?
+  prState      String?   // open | closed | merged
+  draft        Boolean   @default(true)
+  title        String?
+  auto         Boolean   @default(false) // opened by auto mode rather than a person
+  error        String?
+  createdById  String?
+  syncedAt     DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([incidentId, createdAt])
+  @@index([repoFullName, createdAt])
+}
+
+// Architecture-scoped API key for programmatic onboarding (CI, agents via SKILL.md).
+// Only the SHA-256 of the key is stored; the plaintext is shown once at creation.
+model ApiKey {
+  id             String       @id @default(cuid())
+  architectureId String
+  architecture   Architecture @relation(fields: [architectureId], references: [id], onDelete: Cascade)
+  name           String
+  prefix         String       // first characters, shown in the UI to identify the key
+  hash           String       @unique
+  createdById    String?
+  lastUsedAt     DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([architectureId])
+}
+
+// A human decision about a dependency edge, applied every time the topology is
+// derived from contracts so re-analysis never undoes it.
+//   confirm — for an ambiguous env var, this candidate is the right one
+//   reject  — this candidate is wrong (for that env var)
+//   manual  — link the env var (or, with envVar "", the pair) to a service by hand
+//   ignore  — the env var points outside the mesh (external API); stop flagging it
+model EdgeOverride {
+  id             String       @id @default(cuid())
+  architectureId String
+  architecture   Architecture @relation(fields: [architectureId], references: [id], onDelete: Cascade)
+  fromServiceId  String
+  fromService    Service      @relation("overrideFrom", fields: [fromServiceId], references: [id], onDelete: Cascade)
+  toServiceId    String?
+  toService      Service?     @relation("overrideTo", fields: [toServiceId], references: [id], onDelete: Cascade)
+  envVar         String       @default("")
+  action         String
+  createdById    String?
+  createdAt      DateTime     @default(now())
+
+  @@index([architectureId])
 }

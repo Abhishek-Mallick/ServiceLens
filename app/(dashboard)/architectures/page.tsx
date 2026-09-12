@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { Plus, Boxes, GitBranch } from 'lucide-react';
 import { formatRelative } from '@/lib/utils';
+import { visibleTo } from '@/lib/access';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +16,7 @@ export default async function ArchitecturesPage() {
   if (!session?.user?.id) return null;
 
   const architectures = await prisma.architecture.findMany({
-    where: { userId: session.user.id },
+    where: visibleTo(session.user.id),
     include: { _count: { select: { services: true, regressionRuns: true } } },
     orderBy: { updatedAt: 'desc' },
   });

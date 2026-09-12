@@ -5,13 +5,14 @@ import { authOptions } from '@/lib/auth';
 import { buildTopology } from '@/lib/topology-builder';
 import { parseJson, stringify } from '@/lib/utils';
 import type { TopologyGraph } from '@/lib/types';
+import { visibleTo } from '@/lib/access';
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const architecture = await prisma.architecture.findFirst({
-    where: { id: params.id, userId: session.user.id },
+    where: { id: params.id, ...visibleTo(session.user.id) },
     include: { services: true },
   });
   if (!architecture) return NextResponse.json({ error: 'Not found' }, { status: 404 });

@@ -17,17 +17,15 @@ test.describe('Incident lifecycle', () => {
     // RCA panel auto-starts streaming. We don't need a fully-formed analysis —
     // the heuristic fallback emits 100+ words within ~5s, so wait for
     // *anything* meaningful in the body.
-    const rcaCard = page.locator('text=AI root-cause analysis').locator('..').locator('..');
+    const rcaCard = page.locator('text=AI root-cause analysis').locator('..').locator('..').first();
     await expect(rcaCard).toBeVisible();
-    await expect(rcaCard.locator('pre, .prose')).toContainText(/root cause|evidence|suggested|service/i, { timeout: 60_000 });
+    await expect(rcaCard.locator('pre, .prose').first()).toContainText(/root cause|evidence|suggested|service/i, { timeout: 60_000 });
 
-    // Generate fix PR (button enabled once RCA is rendered).
-    await page.getByRole('button', { name: /generate fix pr/i }).click();
-    // Either a model-produced diff lands within ~60s, or we surface an error
-    // and the toast shows. Wait for the per-file diff `path` element which
-    // appears only after a successful generation.
-    await expect(page.getByText(/branch:/i)).toBeVisible({ timeout: 90_000 });
-    await expect(page.getByRole('button', { name: /copy as patch/i })).toBeVisible();
+    // Fix PRs need a real repository; on the demo mesh the panel explains that
+    // instead of inventing a patch. (The real flow is covered against a fake
+    // GitHub in the verification runs — see docs/STATUS.md.)
+    await page.getByRole('button', { name: /generate fix/i }).click();
+    await expect(page.getByText(/demo mesh has no source to fix/i)).toBeVisible({ timeout: 30_000 });
 
     // Acknowledge.
     await page.getByRole('button', { name: /^acknowledge$/i }).click();
@@ -40,6 +38,7 @@ test.describe('Incident lifecycle', () => {
     await page.getByRole('button', { name: /^resolve$/i }).click();
     await expect(page.getByText(/^resolved$/i).first()).toBeVisible({ timeout: 10_000 });
     // The note appears in the timeline section.
-    await expect(page.getByText(note)).toBeVisible({ timeout: 5_000 });
+    // Shown in both the timeline and the Details card.
+    await expect(page.getByText(note).first()).toBeVisible({ timeout: 5_000 });
   });
 });

@@ -1,7 +1,7 @@
 import { extractEndpoints } from './extract-endpoints';
 import { extractDeps, parseEnvExample } from './extract-deps';
 import { makeOctokit, parseRepoUrl } from './github-client';
-import { listInterestingTree, readFile } from './github-contents';
+import { listInterestingTree, readFiles } from './github-contents';
 import type { ServiceContract, EnvVar } from './types';
 
 interface SourceFile { path: string; content: string }
@@ -51,13 +51,14 @@ export async function ingestService(opts: {
   ref.branch = opts.branch ?? ref.branch;
   const octokit = makeOctokit(opts.githubToken);
 
-  const { commitSha, entries } = await listInterestingTree(octokit, ref);
+  const { commitSha, branch, entries } = await listInterestingTree(octokit, ref);
+  const files: SourceFile[] = await readFiles(
+    octokit,
+    ref,
+    entries.map((e) => e.path),
+    commitSha,
+    { authenticated: !!opts.githubToken },
+  );
 
-  const files: SourceFile[] = [];
-  for (const entry of entries) {
-    const content = await readFile(octokit, ref, entry.path);
-    if (content != null) files.push({ path: entry.path, content });
-  }
-
-  return ingestFromFiles(files, commitSha);
+  return { ...ingestFromFiles(files, commitSha), branch };
 }

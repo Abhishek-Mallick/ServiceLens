@@ -93,9 +93,10 @@ export function TopologyView({ architectureId, graph, services, animatedEdges, a
       source: e.source,
       target: e.target,
       type: e.type,
-      label: e.label,
+      label: (e.details as { ambiguous?: boolean } | undefined)?.ambiguous ? `${e.label ?? ''} ?` : e.label,
       data: { edgeType: e.type, details: e.details, active: false },
-      style: edgeStyleFor(e.type),
+      // Ambiguous matches (several candidate services) are drawn dashed until someone confirms one.
+      style: { ...edgeStyleFor(e.type), ...((e.details as { ambiguous?: boolean } | undefined)?.ambiguous ? { strokeDasharray: '6 4', opacity: 0.6 } : {}) },
       animated: false,
       interactionWidth: 15,
     }));

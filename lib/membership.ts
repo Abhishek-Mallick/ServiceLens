@@ -98,3 +98,17 @@ export async function listForUser(userId: string) {
     orderBy: { updatedAt: 'desc' },
   });
 }
+
+// Give a user read-only access to every demo architecture so a fresh signup can
+// explore a live mesh before onboarding their own. Idempotent; never downgrades
+// an existing membership.
+export async function grantDemoAccess(userId: string): Promise<void> {
+  const demos = await prisma.architecture.findMany({ where: { demo: true }, select: { id: true } });
+  for (const d of demos) {
+    await prisma.architectureMember.upsert({
+      where: { architectureId_userId: { architectureId: d.id, userId } },
+      create: { architectureId: d.id, userId, role: 'viewer', acceptedAt: new Date() },
+      update: {},
+    });
+  }
+}

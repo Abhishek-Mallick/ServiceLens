@@ -10,6 +10,7 @@ import { SeverityBadge } from '@/components/incidents/severity-badge';
 import { TriggerSyntheticButton } from '@/components/incidents/trigger-synthetic-button';
 import { formatRelative } from '@/lib/utils';
 import { AlertTriangle } from 'lucide-react';
+import { visibleTo } from '@/lib/access';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,8 +19,8 @@ export default async function IncidentsPage({ params }: { params: { id: string }
   if (!session?.user?.id) return null;
 
   const arch = await prisma.architecture.findFirst({
-    where: { id: params.id, userId: session.user.id },
-    select: { id: true },
+    where: { id: params.id, ...visibleTo(session.user.id) },
+    select: { id: true, demo: true },
   });
   if (!arch) notFound();
 
@@ -47,13 +48,13 @@ export default async function IncidentsPage({ params }: { params: { id: string }
           </h2>
           <p className="text-sm text-muted-foreground mt-1">{open.length} open · {resolved.length} resolved</p>
         </div>
-        <TriggerSyntheticButton architectureId={params.id} />
+        {arch.demo && <TriggerSyntheticButton architectureId={params.id} />}
       </div>
 
       <Card>
         <CardHeader><CardTitle className="text-base">Open</CardTitle></CardHeader>
         <CardContent className="pt-0 space-y-2">
-          {open.length === 0 && <div className="text-sm text-muted-foreground">No open incidents. Mesh is healthy.</div>}
+          {open.length === 0 && <div className="text-sm text-muted-foreground">No open incidents.</div>}
           {open.map((i) => (
             <Link key={i.id} href={`/architectures/${params.id}/incidents/${i.id}`}
               className="flex items-center justify-between gap-3 rounded-md border border-border/60 p-3 hover:border-primary/40 transition-colors">

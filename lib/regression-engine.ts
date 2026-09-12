@@ -1,6 +1,7 @@
 import { prisma } from './prisma';
 import { parseJson, stringify } from './utils';
 import type { RegressionFlow, RegressionFlowStep, ServiceProducedEvent, ServiceConsumedEvent, ServiceApi } from './types';
+import { assertDemoArchitecture } from './demo';
 
 type DbService = Awaited<ReturnType<typeof prisma.service.findMany>>[number];
 
@@ -125,6 +126,7 @@ export async function executeRegressionRun(
   architectureId: string,
   opts: { failureRate?: number; triggeredBy?: string; onProgress?: (stepIndex: number, total: number, status: string) => void } = {}
 ): Promise<string> {
+  await assertDemoArchitecture(architectureId, 'Regression runs');
   const services = await prisma.service.findMany({ where: { architectureId } });
   const flows = discoverFlowsHeuristic(services);
   const allSteps = flows.flatMap((f) =>

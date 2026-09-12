@@ -8,6 +8,8 @@ import { StatusBadge } from '@/components/shared/status-badge';
 import { AddServiceButton } from '@/components/architecture/add-service-button';
 import { parseJson } from '@/lib/utils';
 import { Cable, Database, Radio, Server } from 'lucide-react';
+import { visibleTo } from '@/lib/access';
+import { atLeast, getRole } from '@/lib/membership';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,10 +17,11 @@ export default async function ArchitectureOverview({ params }: { params: { id: s
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return null;
   const architecture = await prisma.architecture.findFirst({
-    where: { id: params.id, userId: session.user.id },
+    where: { id: params.id, ...visibleTo(session.user.id) },
     include: { services: true },
   });
   if (!architecture) notFound();
+  const canEdit = atLeast(await getRole(architecture.id, session.user.id), 'editor');
 
   const totalEvents = architecture.services.reduce(
     (sum, s) => sum + parseJson<unknown[]>(s.producesEvents, []).length,
@@ -71,14 +74,14 @@ export default async function ArchitectureOverview({ params }: { params: { id: s
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between gap-2">
             <CardTitle>Services</CardTitle>
-            <AddServiceButton architectureId={architecture.id} />
+            {canEdit && <AddServiceButton architectureId={architecture.id} />}
           </CardHeader>
           <CardContent className="pt-0">
             {architecture.services.length === 0 && (
               <div className="rounded-md border border-dashed border-border/60 p-6 text-center">
                 <div className="text-sm font-medium">Add your first service</div>
                 <p className="text-xs text-muted-foreground mt-1">Register a Git repo and ServiceLens will analyze it.</p>
-                <div className="mt-3"><AddServiceButton architectureId={architecture.id} /></div>
+                <div className="mt-3">{canEdit && <AddServiceButton architectureId={architecture.id} />}</div>
               </div>
             )}
             <div className="grid gap-2 md:grid-cols-2">

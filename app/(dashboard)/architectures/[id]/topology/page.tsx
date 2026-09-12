@@ -6,6 +6,7 @@ import { parseJson } from '@/lib/utils';
 import { buildTopology } from '@/lib/topology-builder';
 import type { TopologyGraph } from '@/lib/types';
 import { LiveTopology } from '@/components/topology/live-topology';
+import { visibleTo } from '@/lib/access';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +14,7 @@ export default async function TopologyPage({ params }: { params: { id: string } 
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return null;
   const architecture = await prisma.architecture.findFirst({
-    where: { id: params.id, userId: session.user.id },
+    where: { id: params.id, ...visibleTo(session.user.id) },
     include: { services: true },
   });
   if (!architecture) notFound();

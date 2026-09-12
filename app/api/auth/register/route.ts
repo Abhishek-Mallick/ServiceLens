@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
+import { grantDemoAccess } from '@/lib/membership';
 
 const schema = z.object({
   name: z.string().min(1),
@@ -23,5 +24,6 @@ export async function POST(req: Request) {
     data: { email: parsed.data.email, name: parsed.data.name, password: hash },
     select: { id: true, email: true, name: true },
   });
+  await grantDemoAccess(user.id).catch((err) => console.error('[register] demo access failed:', err));
   return NextResponse.json({ user });
 }

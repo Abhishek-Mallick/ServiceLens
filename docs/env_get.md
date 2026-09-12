@@ -1,5 +1,7 @@
 # Where every env value comes from
 
+> **Deploying to production?** Start with **[`secrets.md`](./secrets.md)**, the concise checklist of what's required, where each value comes from, and how to set it on Vercel. This page has longer per-provider walkthroughs.
+
 A step-by-step for every variable in `.env.example`. Required keys are flagged ⚠. Everything else is optional — the app degrades to console / heuristic / simulator when a key is missing.
 
 > Tip: `cp .env.example .env` first, then fill in the lines as you walk through this doc.
@@ -144,7 +146,7 @@ Per-architecture overrides are configured in the UI; this is the optional global
 
 ## CRON — `CRON_SECRET`
 
-Protects `/api/cron/tick` so randos can't trigger your chaos drills.
+Protects `/api/cron/tick`, the endpoint that runs monitoring (probes, rules, incidents) on serverless deployments. **Required in production.**
 
 ```bash
 openssl rand -hex 32
@@ -158,15 +160,9 @@ If `CRON_SECRET` is unset, the endpoint is open (fine for `localhost`, **not for
 
 ---
 
-## Worker — `WORKER_INTERVAL`
+## Scheduler — `SCHEDULER` / `SCHEDULER_INTERVAL`
 
-Cadence (seconds) for the standalone `npm run worker` tick. Default 30. Lower = more responsive chaos drills, higher = lighter DB load. Minimum is 5.
-
-```bash
-WORKER_INTERVAL="30"
-```
-
-Only used by the self-hosted worker process. Vercel deployments use Vercel Cron + `/api/cron/tick` instead.
+Monitoring (probes → alert rules → incidents) runs from one scheduler tick. `next dev`/`next start` run it in-process every `SCHEDULER_INTERVAL` seconds (default 15, minimum 5). Set `SCHEDULER="off"` if you run `npm run worker` as a separate process. On Vercel neither applies: a cron must call `/api/cron/tick` (see [`secrets.md` §4](./secrets.md#4-monitoring-needs-a-cron-on-vercel)). `WORKER_INTERVAL` still works as a legacy alias.
 
 ---
 

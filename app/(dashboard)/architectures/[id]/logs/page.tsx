@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { LogsViewer } from '@/components/logs/logs-viewer';
+import { visibleTo } from '@/lib/access';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,8 +12,8 @@ export default async function LogsPage({ params }: { params: { id: string } }) {
   if (!session?.user?.id) return null;
 
   const arch = await prisma.architecture.findFirst({
-    where: { id: params.id, userId: session.user.id },
-    select: { id: true },
+    where: { id: params.id, ...visibleTo(session.user.id) },
+    select: { id: true, demo: true },
   });
   if (!arch) notFound();
 
@@ -30,7 +31,7 @@ export default async function LogsPage({ params }: { params: { id: string } }) {
           Search and tail logs across services. Ingest from your own services via <code className="text-[11px]">POST /api/services/:id/logs</code> with the service bearer token (see Service detail → Logs ingestion).
         </p>
       </div>
-      <LogsViewer architectureId={params.id} services={services} />
+      <LogsViewer architectureId={params.id} services={services} canGenerate={arch.demo} />
     </div>
   );
 }

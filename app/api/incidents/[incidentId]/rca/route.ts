@@ -1,7 +1,7 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
 import { streamRcaInto } from '@/lib/rca';
+import { requireOwnedIncident } from '@/lib/auth-helpers';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -14,10 +14,8 @@ export async function POST(_req: Request, { params }: { params: { incidentId: st
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return new Response('Unauthorized', { status: 401 });
 
-  const owned = await prisma.incident.findFirst({
-    where: { id: params.incidentId, architecture: { userId: session.user.id } },
-    select: { id: true },
-  });
+  // Generating RCA writes to the incident: editors and owners only.
+  const owned = await requireOwnedIncident(params.incidentId, session.user.id, 'editor');
   if (!owned) return new Response('Not found', { status: 404 });
 
   const encoder = new TextEncoder();

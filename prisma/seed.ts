@@ -284,6 +284,7 @@ async function main() {
     data: {
       userId: user.id,
       name: 'E-Commerce Platform',
+      demo: true,
       description: '10-service retail mesh: commerce, payments, inventory, search, and analytics. Seeded for demo.',
       status: 'ready',
     },
@@ -518,26 +519,11 @@ async function main() {
   }
   await prisma.logEntry.createMany({ data: logRows });
 
-  // ── Phase 1 demo: probes, alert rules, one prior incident ────────────────
-  console.log('  · seeding probes + alert rules + one resolved incident…');
+  // ── Phase 1 demo: alert rules, one prior incident ────────────────
+  console.log('  · seeding alert rules + one resolved incident…');
 
-  // One simulated HTTP probe per service (target is the placeholder healthEndpoint
-  // appended to a fake host — probe runner won't fire automatically; user can
-  // hit "Run now" or "Refresh" in the UI to exercise the real probe path).
-  for (const s of createdServices) {
-    await prisma.probe.create({
-      data: {
-        serviceId: s.id,
-        name: `HTTP ${s.healthEndpoint ?? '/health'}`,
-        type: 'http',
-        target: `https://example.invalid${s.healthEndpoint ?? '/health'}`,
-        intervalSec: 30,
-        timeoutSec: 5,
-        expectStatus: 200,
-        enabled: true,
-      },
-    });
-  }
+  // No probes: demo services get simulated health from the scheduler instead
+  // (real probes against placeholder hosts would just mark everything down).
 
   // A few starter rules
   const paymentSvc = svcByName.get('Payment Service');
@@ -621,7 +607,7 @@ async function main() {
   console.log('✅ Seeded user=demo@servicelens.com / demo123');
   console.log(`   architecture=${architecture.name}, ${createdServices.length} services`);
   console.log(`   ${healthRecords.length} health records, ${runConfigs.length} regression runs`);
-  console.log('   + ' + createdServices.length + ' probes, 3 alert rules, 1 resolved incident');
+  console.log('   + 3 alert rules, 1 resolved incident');
   console.log('   + ' + logRows.length + ' synthetic log entries');
 }
 

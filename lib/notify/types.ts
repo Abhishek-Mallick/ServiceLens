@@ -2,7 +2,7 @@ export type ChannelKind = 'inapp' | 'email' | 'slack' | 'webhook' | 'console';
 export type Severity = 'info' | 'warning' | 'critical';
 
 export interface NotificationMessage {
-  template: 'IncidentOpened' | 'IncidentAcknowledged' | 'IncidentResolved' | 'FixPRReady';
+  template: 'IncidentOpened' | 'IncidentAcknowledged' | 'IncidentResolved' | 'IncidentEscalated' | 'FixPRReady';
   title: string;
   body: string;
   severity: Severity;
@@ -11,6 +11,7 @@ export interface NotificationMessage {
   recipients: {
     userIds: string[]; // in-app target
     emails: string[]; // email channel
+    ackTokens?: Record<string, string>; // per-email magic-link token (email → token)
     slackWebhookUrl?: string | null; // slack channel
     webhookUrl?: string | null;
   };
@@ -24,8 +25,9 @@ export interface NotificationMessage {
     architectureName: string;
     resolution?: string | null;
   };
-  // For ack-from-email magic links
+  // Fallback magic-link token when a recipient has no per-email token
   ackToken?: string;
+  oncall?: { name: string; email: string } | null;
 }
 
 export interface DeliveryResult {

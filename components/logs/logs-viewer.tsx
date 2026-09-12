@@ -30,7 +30,7 @@ const LEVEL_COLOR: Record<string, string> = {
   error: 'text-rose-400',
 };
 
-export function LogsViewer({ architectureId, services }: { architectureId: string; services: ServiceLite[] }) {
+export function LogsViewer({ architectureId, services, canGenerate = false }: { architectureId: string; services: ServiceLite[]; canGenerate?: boolean }) {
   const [logs, setLogs] = useState<LogRow[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [tail, setTail] = useState(false);
@@ -121,10 +121,12 @@ export function LogsViewer({ architectureId, services }: { architectureId: strin
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="text-base">Logs</CardTitle>
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" onClick={generate} disabled={busy === 'gen'}>
-              {busy === 'gen' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-              Generate sample
-            </Button>
+            {canGenerate && (
+              <Button size="sm" variant="outline" onClick={generate} disabled={busy === 'gen'}>
+                {busy === 'gen' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                Generate sample
+              </Button>
+            )}
             <Button size="sm" variant="outline" onClick={fetchLogs} disabled={busy === 'fetch'}>
               <RefreshCw className={cn('h-3.5 w-3.5', busy === 'fetch' && 'animate-spin')} />
               Refresh

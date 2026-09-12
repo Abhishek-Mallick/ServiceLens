@@ -2,6 +2,8 @@
 const nextConfig = {
   reactStrictMode: true,
   experimental: {
+    // Enables instrumentation.ts, which starts the in-process monitoring scheduler.
+    instrumentationHook: true,
     // Never bundle these — keep their React/peer deps off the page graph.
     // Without this, @react-email/* can drag a parallel React tree into the
     // App Router bundle and break useContext on server Link rendering.

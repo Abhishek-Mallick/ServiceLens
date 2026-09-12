@@ -10,6 +10,14 @@ import { parseJson, formatRelative } from '@/lib/utils';
 import { ArrowLeft, Database, Radio } from 'lucide-react';
 import { ProbesPanel, type ProbeRow } from '@/components/probes/probes-panel';
 import { IngestTokenPanel } from '@/components/logs/ingest-token-panel';
+import { visibleTo } from '@/lib/access';
+import { AnalysisCard } from '@/components/architecture/analysis-card';
+import { DependencyReview } from '@/components/architecture/dependency-review';
+import { ServiceSettings } from '@/components/architecture/service-settings';
+import { loadDependencyReview } from '@/lib/topology/insights';
+import { repoCoverage } from '@/lib/github/app';
+import { atLeast, getRole } from '@/lib/membership';
+import type { Endpoint, OutboundDep } from '@/lib/ingest/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,15 +26,29 @@ export default async function ServiceDetailPage({ params }: { params: { id: stri
   if (!session?.user?.id) return null;
 
   const service = await prisma.service.findFirst({
-    where: { id: params.serviceId, architecture: { id: params.id, userId: session.user.id } },
+    where: { id: params.serviceId, architecture: { id: params.id, ...visibleTo(session.user.id) } },
     include: {
       dependencies: { include: { dependency: true } },
       dependents: { include: { dependent: true } },
       healthHistory: { orderBy: { checkedAt: 'desc' }, take: 20 },
       probes: { orderBy: { createdAt: 'asc' } },
+      contract: true,
+      architecture: { select: { demo: true } },
     },
   });
   if (!service) notFound();
+
+  const demo = service.architecture.demo;
+  const canEdit = !demo && atLeast(await getRole(params.id, session.user.id), 'editor');
+  const review = demo ? null : await loadDependencyReview(params.id);
+  const siblings = demo ? [] : await prisma.service.findMany({ where: { architectureId: params.id }, select: { id: true, name: true }, orderBy: { name: 'asc' } });
+  const [coverage] = demo ? [null] : await repoCoverage([service.repoUrl]);
+  const resolved: Record<string, string> = {};
+  for (const d of service.dependencies) {
+    const envVar = parseJson<{ envVar?: string }>(d.details, {}).envVar;
+    if (envVar) resolved[envVar] = d.dependency.name;
+  }
+  const analysisError = service.analysisStatus === 'error' ? parseJson<{ error?: string }>(service.analysisResult, {}).error ?? null : null;
 
   const produces = parseJson<Array<{ name: string; topic?: string }>>(service.producesEvents, []);
   const consumes = parseJson<Array<{ name: string; topic?: string }>>(service.consumesEvents, []);
@@ -72,6 +94,37 @@ export default async function ServiceDetailPage({ params }: { params: { id: stri
         <IngestTokenPanel serviceId={service.id} />
       </div>
 
+      {!demo && (
+        <AnalysisCard
+          repoUrl={service.repoUrl}
+          analysisStatus={service.analysisStatus}
+          analysisError={analysisError}
+          resolved={resolved}
+          coverage={coverage}
+          contract={
+            service.contract
+              ? {
+                  commitSha: service.contract.commitSha,
+                  extractedAt: service.contract.extractedAt,
+                  framework: service.contract.framework,
+                  endpoints: parseJson<Endpoint[]>(service.contract.endpoints, []),
+                  outboundDeps: parseJson<OutboundDep[]>(service.contract.outboundDeps, []),
+                }
+              : null
+          }
+        />
+      )}
+      {review && <DependencyReview architectureId={params.id} canEdit={canEdit} services={siblings} initial={review} serviceId={service.id} />}
+      {canEdit && (
+        <ServiceSettings
+          architectureId={params.id}
+          serviceId={service.id}
+          initial={{ name: service.name, repoUrl: service.repoUrl, branch: service.branch, deployedUrl: service.deployedUrl, healthPath: service.healthPath }}
+        />
+      )}
+
+      {/* Legacy analysis shape (demo mesh); real services show the Analysis card above. */}
+      {!service.contract && (
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader><CardTitle>Exposes</CardTitle></CardHeader>
@@ -155,6 +208,7 @@ export default async function ServiceDetailPage({ params }: { params: { id: stri
           </CardContent>
         </Card>
       </div>
+      )}
     </div>
   );
 }

@@ -121,22 +121,43 @@ npm run prisma:generate  # regenerate Prisma client
 npm run prisma:push      # apply schema (DIRECT_URL)
 npm run prisma:seed      # load demo data
 npm run db:reset         # force-reset schema + reseed
+npm run db:migrate-demo  # one-off: flag a pre-existing seeded mesh as demo (see below)
 
-npm run worker           # standalone background tick (chaos schedules + job queue)
+npm run worker           # standalone monitoring scheduler (use with SCHEDULER=off on the web tier)
 ```
 
 ---
 
-## Background work (chaos drills + job queue)
+## Monitoring scheduler
 
-Chaos schedules and the job queue are drained by **`GET /api/cron/tick`**.
+Probes, alert rules, incidents, demo chaos drills and the job queue are all driven by one scheduler tick (`lib/scheduler.ts`). Nothing depends on a browser being open.
 
-| Environment | How to run it |
+| Environment | How it runs |
 |---|---|
-| Local / self-hosted | `npm run worker` (default 30s interval via `WORKER_INTERVAL`) |
-| Vercel / cloud | External cron hitting `/api/cron/tick` with `Authorization: Bearer $CRON_SECRET` |
+| `npm run dev` / `npm start` | In-process, every `SCHEDULER_INTERVAL` seconds (default 15). Starts from `instrumentation.ts` |
+| Separate worker | `npm run worker` on any always-on host, with `SCHEDULER=off` on the web tier |
+| Vercel / serverless | A cron calling `GET /api/cron/tick` with `Authorization: Bearer $CRON_SECRET`. `.github/workflows/scheduler-tick.yml` does this every 5 min (set the `SERVICELENS_URL` and `CRON_SECRET` repo secrets) |
 
-Manual **Run now** on chaos drills works without cron. See **[`deploy_vercel.md`](./deploy_vercel.md)** for production scheduler options and deployment caveats.
+Each probe runs on its own `intervalSec` (60s for the default probe) no matter how often the scheduler ticks.
+
+## Paging and on-call
+
+When an incident opens on a real architecture, a durable `incident_opened` job:
+
+1. Looks up the on-call engineer in the architecture's **on-call directory** (Alerts → On-call directory). This is a Google Sheet published as CSV with the columns `service_name, oncall_name, oncall_email, escalation_email`; a `*` row covers every service without its own row.
+2. Notifies everyone. All members get in-app alerts. Owners and editors get email when the rule enables it. The on-call engineer is always emailed, even without a ServiceLens account.
+3. Schedules an escalation to `escalation_email` if nobody acknowledges within the configured minutes.
+4. Generates the RCA in the background, so it's ready when someone opens the incident.
+
+Email needs `RESEND_API_KEY`. Magic links in emails open a confirmation page first, because mail scanners prefetch links; the **Acknowledge** button there performs the ack.
+
+Local testing against services on your machine: set `ALLOW_PRIVATE_PROBES=1`. Otherwise probes and sheet URLs pointing at private addresses are refused.
+
+## Demo vs real architectures
+
+The seeded **E-Commerce Platform** is flagged `demo`. Only demo architectures get simulated health, chaos drills, synthetic incidents and logs, and simulated regression runs. Architectures you create show only data from real probes, log ingest and repos. The API refuses the simulated features on them with `code: "demo_only"`.
+
+If your database was seeded before this flag existed, run `npm run prisma:push && npm run db:migrate-demo` once. It flags the seeded mesh as demo, deletes its placeholder `example.invalid` probes, and gives every existing user read-only access to it (new signups get this automatically). Without that step the scheduler would really probe those fake hosts and page you.
 
 ---
 

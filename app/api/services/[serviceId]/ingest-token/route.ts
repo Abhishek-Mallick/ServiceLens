@@ -16,7 +16,7 @@ export async function GET(_req: Request, { params }: { params: { serviceId: stri
 export async function POST(_req: Request, { params }: { params: { serviceId: string } }) {
   const session = await requireSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const svc = await requireOwnedService(params.serviceId, session.user.id);
+  const svc = await requireOwnedService(params.serviceId, session.user.id, 'editor');
   if (!svc) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   const token = generateIngestToken();
   await prisma.service.update({ where: { id: params.serviceId }, data: { ingestToken: token } });

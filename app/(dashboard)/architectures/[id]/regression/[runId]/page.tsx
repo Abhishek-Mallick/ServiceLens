@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { StatusBadge } from '@/components/shared/status-badge';
 import { parseJson, formatDuration, formatRelative } from '@/lib/utils';
 import { ArrowLeft, CheckCircle2, XCircle, Lightbulb } from 'lucide-react';
+import { visibleTo } from '@/lib/access';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +16,7 @@ export default async function RegressionRunDetail({ params }: { params: { id: st
   if (!session?.user?.id) return null;
 
   const run = await prisma.regressionRun.findFirst({
-    where: { id: params.runId, architectureId: params.id, architecture: { userId: session.user.id } },
+    where: { id: params.runId, architectureId: params.id, architecture: visibleTo(session.user.id) },
     include: {
       steps: {
         orderBy: { stepOrder: 'asc' },
@@ -63,7 +64,7 @@ export default async function RegressionRunDetail({ params }: { params: { id: st
         <Card className="border-primary/30 bg-primary/5">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <Lightbulb className="h-4 w-4 text-primary" /> AI summary
+              <Lightbulb className="h-4 w-4 text-primary" /> {run.simulated ? 'AI summary' : 'Summary'}
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0 space-y-2">

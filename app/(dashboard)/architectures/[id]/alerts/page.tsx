@@ -5,6 +5,13 @@ import { prisma } from '@/lib/prisma';
 import { AlertRulesPanel, type RuleRow } from '@/components/alerts/alert-rules-panel';
 import { ArchitectureNotifications } from '@/components/alerts/architecture-notifications';
 import { ChaosPanel, type ChaosRow } from '@/components/chaos/chaos-panel';
+import { visibleTo } from '@/lib/access';
+import { OncallDirectory, type RosterRow } from '@/components/alerts/oncall-directory';
+import { atLeast, getRole } from '@/lib/membership';
+import { parseJson } from '@/lib/utils';
+import { FixPrSettings } from '@/components/alerts/fix-pr-settings';
+import { githubAppConfigured } from '@/lib/github/app';
+import { decryptSecret, maskWebhook } from '@/lib/secrets';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,12 +20,13 @@ export default async function AlertsPage({ params }: { params: { id: string } })
   if (!session?.user?.id) return null;
 
   const arch = await prisma.architecture.findFirst({
-    where: { id: params.id, userId: session.user.id },
-    select: { id: true, slackWebhookUrl: true, notificationsEmail: true },
+    where: { id: params.id, ...visibleTo(session.user.id) },
+    select: { id: true, demo: true, autoFixPr: true, slackWebhookUrl: true, notificationsEmail: true },
   });
   if (!arch) notFound();
 
-  const [services, rules, chaos] = await Promise.all([
+  const canOwn = atLeast(await getRole(params.id, session.user.id), 'owner');
+  const [services, rules, chaos, oncall] = await Promise.all([
     prisma.service.findMany({ where: { architectureId: params.id }, select: { id: true, name: true }, orderBy: { name: 'asc' } }),
     prisma.alertRule.findMany({
       where: { architectureId: params.id },
@@ -29,6 +37,7 @@ export default async function AlertsPage({ params }: { params: { id: string } })
       where: { architectureId: params.id },
       orderBy: { createdAt: 'desc' },
     }),
+    prisma.oncallSource.findUnique({ where: { architectureId: params.id } }),
   ]);
   const chaosRows: ChaosRow[] = chaos.map((c) => ({
     id: c.id,
@@ -58,13 +67,29 @@ export default async function AlertsPage({ params }: { params: { id: string } })
     <div className="p-6 lg:p-8 space-y-6">
       <div>
         <h2 className="text-xl font-semibold">Alert rules</h2>
-        <p className="text-sm text-muted-foreground mt-1">When a rule's condition holds for its <code className="text-xs">forDuration</code> window, an incident opens. It auto-resolves when the condition has been clear for 2× the window.</p>
+        <p className="text-sm text-muted-foreground mt-1">An incident opens once a rule's condition has held continuously for its <code className="text-xs">forDuration</code>. It auto-resolves when the condition has been clear for 2× the window.</p>
       </div>
       <AlertRulesPanel architectureId={params.id} services={services} initialRules={rows} />
-      <ChaosPanel architectureId={params.id} services={services} initialSchedules={chaosRows} />
+      {arch.demo && <ChaosPanel architectureId={params.id} services={services} initialSchedules={chaosRows} />}
+      {!arch.demo && (
+        <FixPrSettings architectureId={params.id} canEdit={canOwn} initialAuto={arch.autoFixPr} githubConfigured={githubAppConfigured()} />
+      )}
+      {!arch.demo && (
+        <OncallDirectory
+          architectureId={params.id}
+          canEdit={canOwn}
+          serviceNames={services.map((s) => s.name)}
+          initial={{
+            source: oncall
+              ? { csvUrl: oncall.csvUrl, escalateAfterMin: oncall.escalateAfterMin, lastFetchedAt: oncall.lastFetchedAt?.toISOString() ?? null, lastError: oncall.lastError }
+              : null,
+            roster: parseJson<RosterRow[]>(oncall?.rosterJson, []),
+          }}
+        />
+      )}
       <ArchitectureNotifications
         architectureId={params.id}
-        initial={{ slackWebhookUrl: arch.slackWebhookUrl, notificationsEmail: arch.notificationsEmail }}
+        initial={{ slackConfigured: !!arch.slackWebhookUrl, slackMasked: maskWebhook(decryptSecret(arch.slackWebhookUrl)), notificationsEmail: arch.notificationsEmail }}
       />
     </div>
   );

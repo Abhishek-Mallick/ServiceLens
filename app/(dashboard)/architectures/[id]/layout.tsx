@@ -8,6 +8,8 @@ import { ArchitectureTabs } from '@/components/architecture/architecture-tabs';
 import { Button } from '@/components/ui/button';
 import { TriggerSyntheticButton } from '@/components/incidents/trigger-synthetic-button';
 import { ArrowLeft } from 'lucide-react';
+import { visibleTo } from '@/lib/access';
+import { atLeast, getRole } from '@/lib/membership';
 
 export default async function ArchitectureLayout({
   children,
@@ -20,7 +22,7 @@ export default async function ArchitectureLayout({
   if (!session?.user?.id) return null;
 
   const architecture = await prisma.architecture.findFirst({
-    where: { id: params.id, userId: session.user.id },
+    where: { id: params.id, ...visibleTo(session.user.id) },
     include: {
       _count: {
         select: {
@@ -32,6 +34,7 @@ export default async function ArchitectureLayout({
     },
   });
   if (!architecture) notFound();
+  const canEdit = atLeast(await getRole(architecture.id, session.user.id), 'editor');
 
   return (
     <div className="flex flex-col">
@@ -45,6 +48,12 @@ export default async function ArchitectureLayout({
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-semibold truncate">{architecture.name}</h1>
                 <StatusBadge status={architecture.status} />
+                {!canEdit && (
+                  <span className="rounded-full border border-white/[0.12] px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-white/60">Read-only</span>
+                )}
+                {architecture.demo && (
+                  <span className="rounded-full border border-white/[0.12] px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-white/60">Demo · simulated data</span>
+                )}
               </div>
               {architecture.description && <p className="text-sm text-muted-foreground mt-1 max-w-2xl">{architecture.description}</p>}
               <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
@@ -58,10 +67,14 @@ export default async function ArchitectureLayout({
               </div>
             </div>
             <div className="flex gap-2">
-              <TriggerSyntheticButton architectureId={architecture.id} />
-              <Button asChild variant="outline" size="sm">
-                <Link href={`/architectures/${architecture.id}/regression`}>Run regression</Link>
-              </Button>
+              {architecture.demo && canEdit && (
+                <>
+                  <TriggerSyntheticButton architectureId={architecture.id} />
+                  <Button asChild variant="outline" size="sm">
+                    <Link href={`/architectures/${architecture.id}/regression`}>Run regression</Link>
+                  </Button>
+                </>
+              )}
               <Button asChild size="sm">
                 <Link href={`/architectures/${architecture.id}/topology`}>Open topology</Link>
               </Button>
