@@ -22,12 +22,22 @@ interface PoolGlobal {
   };
 }
 
+// Both variables count, and a blank one is ignored: hosts like Vercel often
+// define OPENROUTER_API_KEYS="" next to a real OPENROUTER_API_KEY, and `??`
+// would have treated that empty string as "no keys at all".
+export function parseKeys(env: Record<string, string | undefined>): string[] {
+  const all = [env.OPENROUTER_API_KEYS, env.OPENROUTER_API_KEY]
+    .filter((v): v is string => !!v)
+    .flatMap((v) => v.split(','))
+    .map((k) => k.trim())
+    .filter(Boolean);
+  return [...new Set(all)];
+}
+
 function pool() {
   const g = globalThis as unknown as PoolGlobal;
   if (!g.__servicelens_or_pool) {
-    const raw = process.env.OPENROUTER_API_KEYS ?? process.env.OPENROUTER_API_KEY ?? '';
-    const keys = raw.split(',').map((k) => k.trim()).filter(Boolean);
-    g.__servicelens_or_pool = { keys, cursor: 0, failed: new Map() };
+    g.__servicelens_or_pool = { keys: parseKeys(process.env), cursor: 0, failed: new Map() };
   }
   return g.__servicelens_or_pool!;
 }

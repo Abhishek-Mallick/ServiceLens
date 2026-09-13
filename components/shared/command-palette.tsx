@@ -123,31 +123,31 @@ export function CommandPalette() {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh] px-4" role="dialog" aria-modal="true">
-      <button aria-label="Close palette" className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setOpen(false)} />
-      <div className="relative w-full max-w-xl rounded-lg border border-white/[0.14] bg-surface-elevated overflow-hidden">
-        <div className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.06]">
-          <Search className="h-4 w-4 text-white/40" />
+      <button aria-label="Close palette" className="absolute inset-0 bg-canvas/70 backdrop-blur-sm" onClick={() => setOpen(false)} />
+      <div className="relative w-full max-w-xl rounded-lg border border-hairline-strong bg-surface-elevated overflow-hidden">
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-hairline">
+          <Search className="h-4 w-4 text-ash" />
           <input
             ref={inputRef}
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search architectures, services, incidents…"
-            className="flex-1 bg-transparent text-sm text-ink placeholder:text-white/40 outline-none"
+            className="flex-1 bg-transparent text-sm text-ink placeholder:text-ash outline-none"
             onKeyDown={(e) => {
               if (e.key === 'ArrowDown') { e.preventDefault(); setActive((a) => Math.min(flatHits.length - 1, a + 1)); }
               else if (e.key === 'ArrowUp') { e.preventDefault(); setActive((a) => Math.max(0, a - 1)); }
               else if (e.key === 'Enter' && flatHits[active]) { e.preventDefault(); go(flatHits[active]); }
             }}
           />
-          <kbd className="hidden md:inline-flex items-center rounded-md border border-white/[0.08] bg-white/[0.04] px-1.5 py-0.5 text-[10px] text-white/50">esc</kbd>
+          <kbd className="hidden md:inline-flex items-center rounded-md border border-hairline-strong bg-hairline px-1.5 py-0.5 text-[10px] text-ash">esc</kbd>
         </div>
         <div className="max-h-[55vh] overflow-y-auto py-1">
           {flatHits.length === 0 && (
-            <div className="px-4 py-8 text-center text-xs text-white/50">No matches.</div>
+            <div className="px-4 py-8 text-center text-xs text-ash">No matches.</div>
           )}
           {grouped.map((g) => (
             <div key={g.type}>
-              <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-[0.2em] text-white/40">{g.label}</div>
+              <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-[0.2em] text-ash">{g.label}</div>
               {g.items.map((h) => {
                 const Icon = iconFor(h.type);
                 const idx = flatHits.indexOf(h);
@@ -159,22 +159,22 @@ export function CommandPalette() {
                     onClick={() => go(h)}
                     className={cn(
                       'w-full flex items-center gap-3 px-3 py-2 text-left text-sm',
-                      isActive ? 'bg-white/[0.04] text-ink' : 'text-white/80 hover:bg-white/[0.02]'
+                      isActive ? 'bg-hairline text-ink' : 'text-body hover:bg-hairline'
                     )}
                   >
-                    <Icon className={cn('h-4 w-4', h.type === 'incident' && h.severity === 'critical' ? 'text-accent-red' : h.type === 'incident' ? 'text-accent-orange' : 'text-white/60')} />
+                    <Icon className={cn('h-4 w-4', h.type === 'incident' && h.severity === 'critical' ? 'text-accent-red' : h.type === 'incident' ? 'text-accent-orange' : 'text-mute')} />
                     <span className="flex-1 truncate">
                       {h.title}
-                      {h.subtitle && <span className="ml-2 text-[11px] text-white/40">{h.subtitle}</span>}
+                      {h.subtitle && <span className="ml-2 text-[11px] text-ash">{h.subtitle}</span>}
                     </span>
-                    <ArrowRight className="h-3 w-3 text-white/40" />
+                    <ArrowRight className="h-3 w-3 text-ash" />
                   </button>
                 );
               })}
             </div>
           ))}
         </div>
-        <div className="border-t border-white/[0.06] px-3 py-2 text-[10px] text-white/40 flex items-center gap-4">
+        <div className="border-t border-hairline px-3 py-2 text-[10px] text-ash flex items-center gap-4">
           <span><kbd>↑↓</kbd> navigate</span>
           <span><kbd>⏎</kbd> open</span>
           <span><kbd>g</kbd> then <kbd>d</kbd>/<kbd>a</kbd>/<kbd>n</kbd>/<kbd>s</kbd> · quick nav</span>

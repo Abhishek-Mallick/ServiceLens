@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Check, CheckCircle2, Loader2, MessageSquare } from 'lucide-react';
 
-export function IncidentActions({ incidentId, status }: { incidentId: string; status: string }) {
+// Viewers can comment; acknowledging and resolving need editor or owner.
+export function IncidentActions({ incidentId, status, canEdit }: { incidentId: string; status: string; canEdit: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [comment, setComment] = useState('');
@@ -28,7 +29,7 @@ export function IncidentActions({ incidentId, status }: { incidentId: string; st
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
+      {canEdit && <div className="flex flex-wrap gap-2">
         {status === 'open' && (
           <Button size="sm" variant="outline" onClick={() => call('ack', {}, 'ack', 'Acknowledged')} disabled={busy === 'ack'}>
             {busy === 'ack' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
@@ -44,9 +45,9 @@ export function IncidentActions({ incidentId, status }: { incidentId: string; st
             Resolve
           </Button>
         )}
-      </div>
+      </div>}
 
-      {status !== 'resolved' && (
+      {canEdit && status !== 'resolved' && (
         <div className="space-y-2">
           <Textarea
             value={resolution}

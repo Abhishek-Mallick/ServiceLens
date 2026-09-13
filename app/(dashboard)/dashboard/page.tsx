@@ -57,6 +57,8 @@ export default async function DashboardHome() {
   const degraded = healthCounts.find((h) => h.healthStatus === 'degraded')?._count ?? 0;
   const down = healthCounts.find((h) => h.healthStatus === 'down')?._count ?? 0;
   const totalIncidentsOpen = openIncidents.length;
+  // Everyone can see the shared demo; prompt until they have a real architecture.
+  const hasOwnArchitecture = architectures.some((a) => !a.demo);
 
   let heroGraph: TopologyGraph | null = null;
   let heroServices: Array<{
@@ -84,13 +86,13 @@ export default async function DashboardHome() {
     <div>
       <section className={`relative ${glow}`}>
         <div className="px-6 lg:px-10 pt-14 pb-10 max-w-6xl mx-auto">
-          <div className="text-[11px] uppercase tracking-[0.25em] text-white/50 mb-5">
+          <div className="text-[11px] uppercase tracking-[0.25em] text-ash mb-5">
             {firstName ? `Welcome back, ${firstName}` : 'Welcome back'}
           </div>
           <h1 className="font-display text-[64px] md:text-[88px] leading-[0.95] tracking-tight text-ink max-w-3xl">
             The mesh,<br />observed.
           </h1>
-          <p className="mt-6 max-w-xl text-[15px] leading-relaxed text-white/70">
+          <p className="mt-6 max-w-xl text-[15px] leading-relaxed text-charcoal">
             Live topology, real probes, real incidents — with an AI engineer waiting to suggest the fix.
           </p>
 
@@ -100,10 +102,25 @@ export default async function DashboardHome() {
             </Button>
             {primaryArch && (
               <Button variant="outline" asChild>
-                <Link href={`/architectures/${primaryArch.id}/topology`}>Open topology<ArrowRight className="h-4 w-4" /></Link>
+                <Link href={`/architectures/${primaryArch.id}`}>Open workspace<ArrowRight className="h-4 w-4" /></Link>
               </Button>
             )}
           </div>
+
+          {!hasOwnArchitecture && (
+            <div className="mt-8 max-w-2xl rounded-lg border border-hairline-strong bg-surface-card p-5" data-testid="onboarding-callout">
+              <div className="text-[11px] uppercase tracking-[0.2em] text-ash mb-1">Get started</div>
+              <div className="text-ink font-medium">Onboard your own services</div>
+              <p className="text-[13px] text-charcoal mt-1">
+                The E-Commerce Platform is a simulated demo. Add your GitHub repos and deployed URLs and ServiceLens maps their
+                dependencies from code, health-checks them every minute, and opens incidents with an RCA and a fix PR when they break.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button size="sm" asChild><Link href="/architectures/new"><Plus className="h-4 w-4" />Create an architecture</Link></Button>
+                <Button size="sm" variant="outline" asChild><Link href="/SKILL.md" target="_blank">Onboard from CI or an agent</Link></Button>
+              </div>
+            </div>
+          )}
 
           <div className="mt-8 flex flex-wrap gap-2 text-[11px]">
             <Pill label="Architectures" value={architectures.length} />
@@ -120,7 +137,7 @@ export default async function DashboardHome() {
         <section className="px-6 lg:px-10 max-w-6xl mx-auto pb-8">
           <div className="flex items-baseline justify-between mb-3">
             <div>
-              <div className="text-[11px] uppercase tracking-[0.2em] text-white/50">Topology</div>
+              <div className="text-[11px] uppercase tracking-[0.2em] text-ash">Topology</div>
               <h2 className="font-display text-2xl text-ink">{primaryArch.name}</h2>
             </div>
             <Link href={`/architectures/${primaryArch.id}/topology`} className="text-[12px] text-accent-blue hover:underline">
@@ -146,12 +163,12 @@ export default async function DashboardHome() {
           <CardContent className="pt-0">
             <RegressionTrendChart runs={recentRuns.map((r) => ({ id: r.id, total: r.totalSteps, passed: r.passedSteps, failed: r.failedSteps, createdAt: r.createdAt.toISOString() }))} />
             <div className="mt-4 space-y-2">
-              {recentRuns.length === 0 && <div className="text-sm text-white/50">No regression runs yet. Start one from an architecture.</div>}
+              {recentRuns.length === 0 && <div className="text-sm text-ash">No regression runs yet. Start one from an architecture.</div>}
               {recentRuns.map((r) => (
-                <Link key={r.id} href={`/architectures/${r.architectureId}/regression/${r.id}`} className="flex items-center justify-between rounded-md border border-white/[0.06] p-3 hover:border-white/[0.2] transition-colors">
+                <Link key={r.id} href={`/architectures/${r.architectureId}/regression/${r.id}`} className="flex items-center justify-between rounded-md border border-hairline p-3 hover:border-stone transition-colors">
                   <div className="min-w-0">
                     <div className="text-sm font-medium truncate text-ink">{r.architecture.name}</div>
-                    <div className="text-[11px] text-white/50">{formatRelative(r.createdAt)} · {r.totalSteps} steps</div>
+                    <div className="text-[11px] text-ash">{formatRelative(r.createdAt)} · {r.totalSteps} steps</div>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-[11px] text-accent-green">{r.passedSteps} passed</span>
@@ -172,19 +189,19 @@ export default async function DashboardHome() {
           </CardHeader>
           <CardContent className="pt-0 space-y-2">
             {openIncidents.length === 0 && (
-              <div className="rounded-md border border-dashed border-white/[0.08] p-6 text-center">
+              <div className="rounded-md border border-dashed border-hairline-strong p-6 text-center">
                 <div className="text-sm font-medium text-ink">All clear</div>
-                <div className="text-[11px] text-white/50 mt-1">Mesh is healthy end-to-end.</div>
+                <div className="text-[11px] text-ash mt-1">Mesh is healthy end-to-end.</div>
               </div>
             )}
             {openIncidents.map((i) => (
-              <Link key={i.id} href={`/architectures/${i.architectureId}/incidents/${i.id}`} className="block rounded-md border border-white/[0.06] p-3 hover:border-white/[0.2] transition-colors">
+              <Link key={i.id} href={`/architectures/${i.architectureId}/incidents/${i.id}`} className="block rounded-md border border-hairline p-3 hover:border-stone transition-colors">
                 <div className="flex items-center gap-2 mb-1">
                   <SeverityBadge severity={i.severity} />
                   {i.simulated && <SimulatedBadge />}
                 </div>
                 <div className="text-sm text-ink truncate">{i.title}</div>
-                <div className="text-[11px] text-white/50 mt-1">{i.architecture.name}{i.service?.name ? ` · ${i.service.name}` : ''} · {formatRelative(i.openedAt)}</div>
+                <div className="text-[11px] text-ash mt-1">{i.architecture.name}{i.service?.name ? ` · ${i.service.name}` : ''} · {formatRelative(i.openedAt)}</div>
               </Link>
             ))}
           </CardContent>
@@ -197,21 +214,21 @@ export default async function DashboardHome() {
           <Link href="/architectures" className="text-[12px] text-accent-blue hover:underline">All →</Link>
         </div>
         {architectures.length === 0 && (
-          <div className="rounded-lg border border-dashed border-white/[0.08] p-10 text-center">
+          <div className="rounded-lg border border-dashed border-hairline-strong p-10 text-center">
             <Sparkles className="h-6 w-6 mx-auto text-ink mb-2" />
             <div className="text-sm font-medium text-ink">No architectures yet</div>
-            <div className="text-[11px] text-white/50 mb-4">Register your first microservice topology.</div>
+            <div className="text-[11px] text-ash mb-4">Register your first microservice topology.</div>
             <Button asChild size="sm"><Link href="/architectures/new">Get started</Link></Button>
           </div>
         )}
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {architectures.map((a) => (
-            <Link key={a.id} href={`/architectures/${a.id}`} className="block rounded-lg border border-white/[0.06] p-4 hover:border-white/[0.2] transition-colors">
+            <Link key={a.id} href={`/architectures/${a.id}`} className="block rounded-lg border border-hairline p-4 hover:border-stone transition-colors">
               <div className="flex items-center justify-between gap-2 mb-2">
                 <div className="text-sm font-medium text-ink truncate">{a.name}</div>
                 <StatusBadge status={a.status} />
               </div>
-              <div className="text-[11px] text-white/50">{a._count.services} services · {formatRelative(a.updatedAt)}</div>
+              <div className="text-[11px] text-ash">{a._count.services} services · {formatRelative(a.updatedAt)}</div>
             </Link>
           ))}
         </div>
@@ -226,8 +243,8 @@ function Pill({ label, value, tone }: { label: string; value: number; tone?: 'gr
     tone === 'orange' ? 'text-accent-orange' :
     tone === 'red' ? 'text-accent-red' : 'text-ink';
   return (
-    <span className="inline-flex items-center gap-2 rounded-full bg-surface-elevated border border-white/[0.08] px-3 py-1">
-      <span className="text-white/50">{label}</span>
+    <span className="inline-flex items-center gap-2 rounded-full bg-surface-elevated border border-hairline-strong px-3 py-1">
+      <span className="text-ash">{label}</span>
       <span className={`font-medium ${toneClass}`}>{value}</span>
     </span>
   );

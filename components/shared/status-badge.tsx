@@ -5,15 +5,15 @@ const styles: Record<string, string> = {
   healthy: 'bg-accent-green/10 text-accent-green border-accent-green/30',
   degraded: 'bg-accent-orange/10 text-accent-orange border-accent-orange/30',
   down: 'bg-accent-red/10 text-accent-red border-accent-red/30',
-  unknown: 'bg-white/[0.04] text-white/60 border-white/10',
+  unknown: 'bg-hairline text-mute border-hairline-strong',
   completed: 'bg-accent-green/10 text-accent-green border-accent-green/30',
   passed: 'bg-accent-green/10 text-accent-green border-accent-green/30',
   failed: 'bg-accent-red/10 text-accent-red border-accent-red/30',
   running: 'bg-accent-blue/10 text-accent-blue border-accent-blue/30',
-  pending: 'bg-white/[0.04] text-white/60 border-white/10',
+  pending: 'bg-hairline text-mute border-hairline-strong',
   analyzing: 'bg-accent-blue/10 text-accent-blue border-accent-blue/30',
   ready: 'bg-accent-green/10 text-accent-green border-accent-green/30',
-  draft: 'bg-white/[0.04] text-white/60 border-white/10',
+  draft: 'bg-hairline text-mute border-hairline-strong',
   error: 'bg-accent-red/10 text-accent-red border-accent-red/30',
   acknowledged: 'bg-accent-blue/10 text-accent-blue border-accent-blue/30',
   resolved: 'bg-accent-green/10 text-accent-green border-accent-green/30',
@@ -30,7 +30,7 @@ export function StatusBadge({ status, className }: { status: string; className?:
         'bg-accent-orange': key === 'degraded',
         'bg-accent-red': key === 'down' || key === 'failed' || key === 'error' || key === 'open',
         'bg-accent-blue animate-pulse': key === 'running' || key === 'analyzing' || key === 'acknowledged',
-        'bg-white/40': key === 'pending' || key === 'unknown' || key === 'draft',
+        'bg-ink/40': key === 'pending' || key === 'unknown' || key === 'draft',
       })} />
       {status}
     </span>

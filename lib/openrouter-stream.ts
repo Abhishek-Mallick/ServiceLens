@@ -27,7 +27,7 @@ export class AiUnavailableError extends Error {
   constructor(public reason: 'not_configured' | 'rate_limited') {
     super(
       reason === 'not_configured'
-        ? 'No AI provider configured. Set OPENROUTER_API_KEYS to generate fixes.'
+        ? 'No AI provider configured. Set OPENROUTER_API_KEY (or a comma-separated OPENROUTER_API_KEYS pool) to generate fixes.'
         : 'Every OpenRouter key is rate-limited right now. Try again in a minute or add more keys to OPENROUTER_API_KEYS.'
     );
     this.name = 'AiUnavailableError';

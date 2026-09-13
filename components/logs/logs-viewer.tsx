@@ -24,10 +24,10 @@ interface LogRow {
 export interface ServiceLite { id: string; name: string }
 
 const LEVEL_COLOR: Record<string, string> = {
-  debug: 'text-muted-foreground',
-  info: 'text-sky-400',
-  warn: 'text-amber-400',
-  error: 'text-rose-400',
+  debug: 'text-mute',
+  info: 'text-accent-blue',
+  warn: 'text-accent-yellow',
+  error: 'text-accent-red',
 };
 
 export function LogsViewer({ architectureId, services, canGenerate = false }: { architectureId: string; services: ServiceLite[]; canGenerate?: boolean }) {
@@ -143,9 +143,9 @@ export function LogsViewer({ architectureId, services, canGenerate = false }: { 
             onKeyDown={(e) => { if (e.key === 'Enter') fetchLogs(); }}
             placeholder="grep…" className="h-8 max-w-xs" />
           <div className="flex items-center gap-1 text-xs">
-            <span className="text-muted-foreground mr-1">since</span>
+            <span className="text-mute mr-1">since</span>
             <select value={sinceMin} onChange={(e) => setSinceMin(Number(e.target.value))}
-              className="h-7 rounded-md border border-input bg-background px-2 text-xs">
+              className="h-7 rounded-md border border-hairline-strong bg-canvas px-2 text-xs">
               <option value={5}>5m</option>
               <option value={15}>15m</option>
               <option value={60}>1h</option>
@@ -158,7 +158,7 @@ export function LogsViewer({ architectureId, services, canGenerate = false }: { 
               <button key={l} onClick={() => toggleLevel(l)}
                 className={cn(
                   'rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide',
-                  levels.has(l) ? 'border-foreground/40 text-foreground' : 'border-border/60 text-muted-foreground line-through'
+                  levels.has(l) ? 'border-ink/40 text-ink' : 'border-hairline text-mute line-through'
                 )}>
                 {l}
               </button>
@@ -168,20 +168,20 @@ export function LogsViewer({ architectureId, services, canGenerate = false }: { 
 
         {services.length > 0 && (
           <div className="flex flex-wrap items-center gap-1">
-            <span className="text-xs text-muted-foreground mr-1">services:</span>
+            <span className="text-xs text-mute mr-1">services:</span>
             {services.map((s) => (
               <button key={s.id} onClick={() => toggleService(s.id)}
                 className={cn(
                   'rounded-md border px-2 py-0.5 text-[11px]',
                   selectedServices.size === 0 || selectedServices.has(s.id)
-                    ? 'border-foreground/40 text-foreground'
-                    : 'border-border/60 text-muted-foreground'
+                    ? 'border-ink/40 text-ink'
+                    : 'border-hairline text-mute'
                 )}>
                 {s.name}
               </button>
             ))}
             {selectedServices.size > 0 && (
-              <button onClick={() => setSelectedServices(new Set())} className="text-[11px] text-muted-foreground underline ml-1">
+              <button onClick={() => setSelectedServices(new Set())} className="text-[11px] text-mute underline ml-1">
                 clear
               </button>
             )}
@@ -190,22 +190,22 @@ export function LogsViewer({ architectureId, services, canGenerate = false }: { 
       </CardHeader>
 
       <CardContent className="pt-0">
-        <div ref={listRef} className="rounded-md border border-border/60 bg-black/40 font-mono text-[12px] leading-relaxed max-h-[70vh] overflow-y-auto">
+        <div ref={listRef} className="rounded-md border border-hairline bg-canvas/40 font-mono text-[12px] leading-relaxed max-h-[70vh] overflow-y-auto">
           {visible.length === 0 && (
-            <div className="px-3 py-6 text-center text-xs text-muted-foreground">
+            <div className="px-3 py-6 text-center text-xs text-mute">
               No logs matched. Click <em>Generate sample</em> to seed some, or POST to <code className="text-[10px]">/api/services/:id/logs</code> with the service bearer token.
             </div>
           )}
           {visible.map((r) => (
-            <div key={r.id} className="grid grid-cols-[80px_60px_140px_1fr] gap-2 px-3 py-1 border-b border-border/30 hover:bg-white/[0.02]">
-              <span className="text-muted-foreground tabular-nums">{new Date(r.at).toLocaleTimeString()}</span>
+            <div key={r.id} className="grid grid-cols-[80px_60px_140px_1fr] gap-2 px-3 py-1 border-b border-hairline hover:bg-hairline">
+              <span className="text-mute tabular-nums">{new Date(r.at).toLocaleTimeString()}</span>
               <span className={cn('uppercase tracking-wide', LEVEL_COLOR[r.level] ?? '')}>{r.level}</span>
-              <span className="text-muted-foreground truncate">{r.service?.name ?? r.serviceName ?? '—'}</span>
+              <span className="text-mute truncate">{r.service?.name ?? r.serviceName ?? '—'}</span>
               <span className="break-words">{r.message}</span>
             </div>
           ))}
         </div>
-        <div className="text-[10px] text-muted-foreground mt-2">{visible.length} entries · {tail ? 'tailing live' : 'static query'}</div>
+        <div className="text-[10px] text-mute mt-2">{visible.length} entries · {tail ? 'tailing live' : 'static query'}</div>
       </CardContent>
     </Card>
   );

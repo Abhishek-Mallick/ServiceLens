@@ -12,9 +12,11 @@ import { Loader2 } from 'lucide-react';
 export function ArchitectureNotifications({
   architectureId,
   initial,
+  canEdit,
 }: {
   architectureId: string;
   initial: { slackConfigured: boolean; slackMasked: string | null; notificationsEmail: string | null };
+  canEdit: boolean; // owners only (the settings route requires owner)
 }) {
   const [slack, setSlack] = useState('');
   const [slackState, setSlackState] = useState({ configured: initial.slackConfigured, masked: initial.slackMasked });
@@ -42,19 +44,26 @@ export function ArchitectureNotifications({
         <CardTitle className="text-base">Notification routing</CardTitle>
         <CardDescription>Every member gets in-app alerts; owners and editors also get email when a rule enables it. Add a team channel or alias here.</CardDescription>
       </CardHeader>
+      {!canEdit ? (
+        <CardContent className="space-y-1 text-sm">
+          <div><span className="text-mute">Slack:</span> {slackState.configured ? <span className="text-accent-green">connected</span> : 'not connected'}</div>
+          <div><span className="text-mute">Team email:</span> {initial.notificationsEmail || '—'}</div>
+          <p className="text-[11px] text-ash pt-1">Only owners can change notification routing.</p>
+        </CardContent>
+      ) : (
       <CardContent className="space-y-3">
         <div className="space-y-1.5">
           <Label htmlFor="slack-url">Slack incoming webhook URL</Label>
           {slackState.configured && (
             <div className="flex items-center gap-2 text-[12px]">
-              <span className="text-emerald-400">Connected</span>
-              <code className="text-muted-foreground">{slackState.masked}</code>
+              <span className="text-accent-green">Connected</span>
+              <code className="text-mute">{slackState.masked}</code>
               <Button type="button" size="sm" variant="ghost" disabled={saving} onClick={() => save({ slackWebhookUrl: '' }, 'Slack disconnected')}>Remove</Button>
             </div>
           )}
           <Input id="slack-url" value={slack} onChange={(e) => setSlack(e.target.value)} autoComplete="off"
             placeholder={slackState.configured ? 'Paste a new URL to replace' : 'https://hooks.slack.com/services/T0…'} type="url" />
-          <p className="text-[11px] text-muted-foreground">Stored encrypted. Create one at <a href="https://api.slack.com/messaging/webhooks" className="underline" target="_blank" rel="noreferrer">api.slack.com/messaging/webhooks</a>.</p>
+          <p className="text-[11px] text-mute">Stored encrypted. Create one at <a href="https://api.slack.com/messaging/webhooks" className="underline" target="_blank" rel="noreferrer">api.slack.com/messaging/webhooks</a>.</p>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="email-to">Team email alias (optional, in addition to members)</Label>
@@ -64,6 +73,7 @@ export function ArchitectureNotifications({
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
         </Button>
       </CardContent>
+      )}
     </Card>
   );
 }

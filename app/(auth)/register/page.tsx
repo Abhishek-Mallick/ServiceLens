@@ -31,15 +31,22 @@ export default function RegisterPage() {
       setLoading(false);
       return;
     }
-    await signIn('credentials', { email, password, redirect: false });
+    const login = await signIn('credentials', { email, password, redirect: false }).catch(() => null);
     setLoading(false);
+    if (!login?.ok) {
+      // The account exists; only the automatic sign-in failed. Don't strand
+      // them on a protected page that bounces to /login without explanation.
+      toast.success('Account created. Sign in to continue.');
+      router.push('/login');
+      return;
+    }
     toast.success('Account created');
     router.push('/dashboard');
     router.refresh();
   }
 
   return (
-    <Card className="w-full max-w-md border-border/60">
+    <Card className="w-full max-w-md border-hairline">
       <CardHeader>
         <CardTitle className="text-2xl">Create account</CardTitle>
         <CardDescription>Spin up your workspace in seconds.</CardDescription>
@@ -61,7 +68,7 @@ export default function RegisterPage() {
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Create account'}
           </Button>
-          <p className="text-center text-sm text-muted-foreground">
+          <p className="text-center text-sm text-mute">
             Already have an account?{' '}
             <Link href="/login" className="font-medium text-primary hover:underline">
               Sign in

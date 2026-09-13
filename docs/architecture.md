@@ -41,11 +41,11 @@ flowchart TB
     OAuth[GitHub / Google OAuth]
   end
 
-  Core -->|shallow clone + analyze| Git
+  Core -->|GitHub API: tree + files at a pinned SHA| Git
   Core -->|stream RCA + fix-PR| OR
   Core --> Resend
   Core --> Slack
-  Core -->|optional draft PR| GHApp
+  Core -->|private repo reads + draft fix PRs| GHApp
   OAuth --> API
   SvcTeams -->|HEC-style log ingest| API
 ```
@@ -206,7 +206,7 @@ flowchart TB
 | Metrics | `obsly.query_metric` | Health probes + response-time history |
 | Traces | `obsly.get_trace` | Regression flow steps + dependency edges |
 | Topology | `obsly.trace_dependencies` | `ServiceDependency` graph + 1-hop RCA context |
-| Deploys | `repohub.recent_commits` / `get_diff` | Git analyzer shallow clone |
+| Deploys | `repohub.recent_commits` / `get_diff` | GitHub ingestion at a pinned commit (`lib/ingest/*`) |
 | Remediation | `submit_diagnosis` + `pr_proposal` + `blast_radius` | RCA markdown + fix-PR JSON |
 | Process hygiene | `PolicyEngine` per-step penalties | Runbook memory + alert-rule discipline |
 
@@ -216,25 +216,25 @@ Fine-tuned Qwen adapters ([HF Hub](https://huggingface.co/AbhishekMallick/incide
 
 ## Fix-PR generation
 
-A second LLM pass turns the RCA into actionable code changes.
+A second LLM pass turns the RCA into a code change, built from the service's real source (`lib/fix-pr.ts`, `lib/remediation.ts`).
 
 ```mermaid
 sequenceDiagram
-  participant UI as Incident UI
-  participant API as /fix-pr
-  participant LLM as OpenRouter
+  participant Trigger as Incident UI / auto mode
+  participant SL as ServiceLens
   participant GH as GitHub App
+  participant LLM as OpenRouter
 
-  UI->>API: POST generate
-  API->>LLM: RCA + service context → structured JSON
-  LLM-->>API: branchName, files[], prTitle, prBody
-  API-->>UI: Render per-file diff hunks
-  opt GITHUB_APP configured
-    API->>GH: Create draft PR
-  end
+  Trigger->>SL: generate + open fix PR
+  SL->>GH: read the contract's files at the branch HEAD SHA
+  SL->>LLM: RCA + those files → full corrected files (JSON)
+  LLM-->>SL: files[], prTitle, prBody (or "no code change")
+  SL->>SL: compute + validate the diff server-side
+  SL->>GH: blob → tree → commit on HEAD → servicelens/* ref → draft PR
+  GH-->>SL: PR URL (state synced later: open / merged / closed)
 ```
 
-Output schema: `{ branchName, files[{ path, content }], prTitle, prBody }`. The UI renders color-coded hunks with **Copy as patch** and **Download .patch**. With `GITHUB_APP_*` credentials, the platform can open a real draft PR on the linked repository.
+Safety rails: draft only and never merged; only repos with the App installed; 1 PR per repo per hour; idempotent per incident; a blob-SHA conflict check means nothing is written if the file changed upstream; the demo never opens PRs; auto mode is off by default. Without a working LLM the request fails with a clear 503 — fixes are never faked.
 
 ---
 
@@ -242,16 +242,17 @@ Output schema: `{ branchName, files[{ path, content }], prTitle, prBody }`. The 
 
 ```mermaid
 flowchart TB
-  Repo[Git remote URL] --> Clone[Sandboxed shallow clone]
-  Clone --> Extract[Key-file extraction]
-  Extract --> Heuristic[Heuristic framework detection]
-  Extract --> LLM[OpenRouter service summary]
-  Heuristic & LLM --> Graph[Topology builder]
-  Graph --> RF[React Flow visualization]
-  Graph --> Deps[ServiceDependency edges]
+  Repo[GitHub repo URL] --> Tree[GitHub API: tree at branch HEAD SHA]
+  Tree --> Files[Raw CDN or App token: interesting files only]
+  Files --> Extract[Extractors: Express / Next.js routes + env-var deps]
+  Extract --> Contract[ServiceContract per service]
+  Contract --> Derive[from-contracts: host match → env-name match → ambiguous → unresolved]
+  Overrides[EdgeOverride: human confirm / reject / manual] --> Derive
+  Derive --> Deps[ServiceDependency edges]
+  Deps --> Workspace[Architecture workspace graph]
 ```
 
-Clone operations are guarded: URL validation (SSRF protection), size cap (50 MB), and timeout (30 s). The topology builder derives dependency edges from import/call patterns and renders an interactive graph with live health overlays.
+Ingestion costs 2 GitHub API calls per service (file bodies come from `raw.githubusercontent.com`, or the contents API with the App token for private repos) and falls back to the default branch. Edges are re-derived on analyze, rename, deployed-URL change and delete; human decisions survive re-analysis.
 
 ---
 
@@ -296,12 +297,15 @@ Platform logic lives in `lib/`; API routes are thin handlers. Key modules:
 |---|---|
 | Observability | `probes.ts`, `health-monitor.ts`, `alert-rules.ts`, `logs.ts`, `log-generator.ts` |
 | Incidents | `incidents.ts`, `rca.ts`, `fix-pr.ts`, `notify/` |
-| Topology | `git-analyzer.ts`, `code-analyzer.ts`, `topology-builder.ts`, `openrouter.ts` |
-| Chaos | `chaos.ts` |
-| Platform | `realtime.ts`, `jobs.ts`, `membership.ts`, `audit.ts`, `auth.ts` |
-| AI transport | `openrouter-stream.ts` |
+| Topology | `ingest/*`, `analyze.ts`, `topology/from-contracts.ts`, `topology/insights.ts`, `topology-builder.ts` (demo layout) |
+| Monitoring | `scheduler.ts`, `datastore-probes.ts`, `net-guard.ts`, `monitoring/defaults.ts` |
+| Incidents | `incident-pipeline.ts`, `oncall/*`, `remediation.ts`, `runbook.ts` |
+| Chaos | `chaos.ts` (demo only) |
+| Platform | `realtime.ts`, `jobs.ts`, `job-handlers.ts`, `membership.ts`, `access.ts`, `audit.ts`, `auth.ts`, `secrets.ts`, `rate-limit.ts`, `api-keys.ts` |
+| Workspace & UI | `workspace.ts`, `design-tokens.ts` |
+| AI transport | `openrouter-stream.ts`, `github/app.ts` |
 
-Regression flow discovery runs through `regression-engine.ts` (simulated outcomes in the stock build).
+Real architectures run contract tests (`contract-tests.ts`); the demo keeps the simulated `regression-engine.ts`.
 
 ---
 

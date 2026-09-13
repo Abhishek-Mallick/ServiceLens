@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { format } from 'date-fns';
+import { colors, statusColor } from '@/lib/design-tokens';
 
 interface Run {
   id: string;
@@ -28,19 +29,19 @@ export function RegressionTrendChart({ runs }: { runs: Run[] }) {
   return (
     <ResponsiveContainer width="100%" height={160}>
       <BarChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-        <XAxis dataKey="label" stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} />
-        <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} />
+        <CartesianGrid strokeDasharray="3 3" stroke={colors['hairline-strong']} />
+        <XAxis dataKey="label" stroke={colors.mute} tick={{ fontSize: 10 }} />
+        <YAxis stroke={colors.mute} tick={{ fontSize: 10 }} />
         <Tooltip
           contentStyle={{
-            background: 'hsl(var(--popover))',
-            border: '1px solid hsl(var(--border))',
+            background: colors['surface-elevated'],
+            border: `1px solid ${colors['hairline-strong']}`,
             borderRadius: 8,
             fontSize: 12,
           }}
         />
-        <Bar dataKey="passed" stackId="a" fill="hsl(152 60% 45%)" radius={[0, 0, 0, 0]} />
-        <Bar dataKey="failed" stackId="a" fill="hsl(352 80% 55%)" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="passed" stackId="a" fill={statusColor.healthy} radius={[0, 0, 0, 0]} />
+        <Bar dataKey="failed" stackId="a" fill={statusColor.down} radius={[4, 4, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );

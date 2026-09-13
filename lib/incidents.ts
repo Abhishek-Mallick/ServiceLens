@@ -179,6 +179,7 @@ export async function resolveIncident(incidentId: string, byUserId: string | nul
   const inc = await prisma.incident.findUnique({ where: { id: incidentId }, select: { architectureId: true } });
   if (inc) publish(inc.architectureId, 'incident_resolved', { incidentId });
   await kick('notify', { incidentId, template: 'IncidentResolved' });
+  if (!resolution?.trim()) await kick('resolution_summary', { incidentId });
 }
 
 export async function resolveIncidentForRule(ruleId: string, serviceId: string | null, reason: 'auto' | 'manual'): Promise<void> {
@@ -189,7 +190,8 @@ export async function resolveIncidentForRule(ruleId: string, serviceId: string |
   for (const i of open) {
     const updated = await prisma.incident.updateMany({
       where: { id: i.id, status: { not: 'resolved' } },
-      // No `resolution` text: that field feeds runbook memory and should only hold human notes.
+      // No `resolution` text: that field holds human notes only. The runbook
+      // summary job fills `resolutionSummary` from stored facts instead.
       data: { status: 'resolved', resolvedAt: new Date() },
     });
     if (updated.count === 0) continue;
@@ -198,6 +200,7 @@ export async function resolveIncidentForRule(ruleId: string, serviceId: string |
     });
     publish(i.architectureId, 'incident_resolved', { incidentId: i.id, reason });
     await kick('notify', { incidentId: i.id, template: 'IncidentResolved' });
+    await kick('resolution_summary', { incidentId: i.id });
   }
 }
 

@@ -94,11 +94,11 @@ export function statusOf(status: string | null | undefined): keyof typeof status
   return status && status in statusColor ? (status as keyof typeof statusColor) : 'unknown';
 }
 
-// Tailwind palette: every token (except `primary`, which stays the shadcn
-// semantic color backed by a CSS variable) plus status-*/severity-* aliases.
+// Tailwind palette: every token plus status-*/severity-* aliases. It replaces
+// Tailwind's default palette entirely (see tailwind.config.ts).
 export function tailwindColors(): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const [k, v] of Object.entries(colors)) if (k !== 'primary') out[k] = v;
+  for (const [k, v] of Object.entries(colors)) out[k] = v;
   for (const [k, v] of Object.entries(statusColor)) out[`status-${k}`] = v;
   for (const [k, v] of Object.entries(severityColor)) out[`severity-${k}`] = v;
   return out;

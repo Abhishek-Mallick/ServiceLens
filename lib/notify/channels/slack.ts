@@ -1,5 +1,6 @@
 import type { NotificationChannel, NotificationMessage, DeliveryResult } from '../types';
 import { guardedRequest } from '@/lib/net-guard';
+import { severityColor } from '@/lib/design-tokens';
 
 // Only Slack's own webhook host is ever contacted — this URL is user-supplied.
 export function isSlackWebhookUrl(url: string): boolean {
@@ -11,11 +12,7 @@ export function isSlackWebhookUrl(url: string): boolean {
   }
 }
 
-const SEVERITY_COLOR: Record<string, string> = {
-  critical: '#ff2047',
-  warning: '#ff801f',
-  info: '#3b9eff',
-};
+const SEVERITY_COLOR: Record<string, string> = severityColor;
 
 function buildBlocks(msg: NotificationMessage) {
   const color = SEVERITY_COLOR[msg.severity] ?? SEVERITY_COLOR.info;

@@ -14,7 +14,7 @@ Every variable ServiceLens reads, where to get it, and how to set it on **Vercel
 | `CRON_SECRET` | Guards `/api/cron/tick` (monitoring) | **Yes** | `openssl rand -hex 32` |
 | `RESEND_API_KEY` | Incident / on-call emails | Yes, if you want email paging | resend.com → API Keys |
 | `RESEND_FROM` | Email sender | With Resend | An address on your Resend-verified domain |
-| `OPENROUTER_API_KEYS` | AI RCA + fix-PR | Recommended | openrouter.ai/keys (comma-separate several keys to rotate) |
+| `OPENROUTER_API_KEY` and/or `OPENROUTER_API_KEYS` | AI RCA + fix-PR | Recommended | openrouter.ai/keys. One key in `_KEY`, or several comma-separated in `_KEYS` to rotate. Both are read and blanks are ignored |
 | `OPENROUTER_MODEL` | Model choice | No | Default `meta-llama/llama-3.3-70b-instruct:free` |
 | `GITHUB_APP_ID` / `GITHUB_APP_PRIVATE_KEY` | **Opening fix PRs**; reading private repos the App is installed on | Recommended | Your GitHub App (§2) |
 | `GITHUB_TOKEN` | Repo analysis for repos the App isn't installed on (5,000 req/h) | Optional | GitHub fine-grained token, *Contents: read-only* |
@@ -73,7 +73,7 @@ Vercel Cron sends it automatically as `Authorization: Bearer …`. Any other pin
 Until the domain is verified, Resend only delivers to your own account address. On-call engineers and teammates won't get anything.
 
 ### OpenRouter (AI)
-<https://openrouter.ai/keys> → create a key. `OPENROUTER_API_KEYS="sk-or-…,sk-or-…"`. Several keys get rotated when one is rate-limited, which helps a lot on `:free` models.
+<https://openrouter.ai/keys> → create a key → `OPENROUTER_API_KEY="sk-or-…"`, or a pool: `OPENROUTER_API_KEYS="sk-or-…,sk-or-…"`. Several keys get rotated when one is rate-limited, which helps a lot on `:free` models. Both variables are merged and a blank one is ignored. Before 2026-09-13, a blank `OPENROUTER_API_KEYS` silently disabled AI, so redeploy if RCAs were coming back as the heuristic report.
 
 ### `GITHUB_TOKEN` (repo analysis)
 <https://github.com/settings/personal-access-tokens> → **Fine-grained token**:

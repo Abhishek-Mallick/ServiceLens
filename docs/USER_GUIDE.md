@@ -66,6 +66,8 @@ Invite people from the architecture's **Members** settings. They need a ServiceL
 | **Editor** | + add/edit services and probes, edit rules, acknowledge/resolve incidents, generate RCA and fix PRs, and get incident **emails** |
 | **Owner** | + members, notification routing, on-call directory, auto fix PRs, API keys, delete the architecture |
 
+The UI follows these roles: viewers see rules, probes, notification routing and incidents read-only, with no edit buttons, and can't see ingest tokens.
+
 ---
 
 ## 4. Onboarding at scale: API, CI, agents
@@ -194,6 +196,7 @@ orders,Alice Liu,alice@acme.com,sre-lead@acme.com
 - **Acknowledge** from the email or the incident page; acknowledging stops escalation. Email links open a confirmation page first, so mail scanners can't auto-acknowledge.
 - **Resolve** with a short *what fixed it* note. Notes are reused as **runbook memory** in future RCAs for the same service.
 - Incidents also auto-resolve when their rule clears.
+- When an incident resolves without a note (auto-resolve, or resolve with the note left empty), ServiceLens records **What happened** on the incident: how long it lasted, who acknowledged it and when, the RCA's root cause, and the fix PR with its state. It uses only stored facts. Future RCAs use it as runbook memory, marked as auto-recorded, and a human note always takes precedence.
 
 ---
 
@@ -235,7 +238,7 @@ curl -X POST "$SERVICELENS_URL/api/services/<serviceId>/logs" \
   -H "Authorization: Bearer <ingest token>" -H "Content-Type: application/json" \
   -d '{"entries":[{"level":"error","message":"payment timeout","fields":{"orderId":"o-1"},"traceId":"abc","at":"2026-09-12T10:00:00Z"}]}'
 ```
-Also accepted: a JSON array, a single object, or NDJSON (`Content-Type: application/x-ndjson`). Levels are `debug`, `info`, `warn` and `error`. Search and live-tail logs from the **Logs** tab. Warn/error lines around an incident are captured into its timeline and fed to the RCA.
+Also accepted: a JSON array, a single object, or NDJSON (`Content-Type: application/x-ndjson`). Levels are `debug`, `info`, `warn` and `error`. Each service may send up to 600 requests a minute; batch entries into one request rather than sending one line per request. Search and live-tail logs from the **Logs** tab. Warn/error lines around an incident are captured into its timeline and fed to the RCA.
 
 ---
 
@@ -252,3 +255,4 @@ Also accepted: a JSON array, a single object, or NDJSON (`Content-Type: applicat
 | "No safe code change" | The model judged it a non-code issue. Read the RCA's next steps |
 | Fix generation 503 | OpenRouter unavailable or rate-limited. Add keys to `OPENROUTER_API_KEYS` or retry |
 | Members get 404 | They aren't a member of that architecture; invite them |
+| `429 rate_limited` | Public endpoints are rate-limited per instance: log ingest 600/min per service, the v1 API 120/min per key, magic-link acknowledge 30/min per IP, sign-up 5 per 10 min per IP. Honour `Retry-After` |

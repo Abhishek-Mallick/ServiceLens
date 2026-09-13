@@ -254,6 +254,8 @@ model Incident {
   rcaMarkdown    String?
   rcaModel       String?
   resolution     String?
+  // Written by ServiceLens (lib/runbook.ts) when nobody left a note; human notes win.
+  resolutionSummary String?
   assigneeId     String?
   assignee       User?           @relation("incidentAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   openedAt       DateTime        @default(now())

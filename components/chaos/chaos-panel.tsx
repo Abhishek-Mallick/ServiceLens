@@ -115,19 +115,19 @@ export function ChaosPanel({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <form onSubmit={add} className="rounded-md border border-white/[0.08] p-3 space-y-3">
+        <form onSubmit={add} className="rounded-md border border-hairline-strong p-3 space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <div className="space-y-1.5">
               <Label>Target service</Label>
               <select value={form.targetServiceId} onChange={(e) => setForm({ ...form, targetServiceId: e.target.value })}
-                className="h-9 w-full rounded-md border border-white/[0.14] bg-surface-card px-3 text-sm text-ink">
+                className="h-9 w-full rounded-md border border-hairline-strong bg-surface-card px-3 text-sm text-ink">
                 {services.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             </div>
             <div className="space-y-1.5">
               <Label>Action</Label>
               <select value={form.action} onChange={(e) => setForm({ ...form, action: e.target.value as Action })}
-                className="h-9 w-full rounded-md border border-white/[0.14] bg-surface-card px-3 text-sm text-ink">
+                className="h-9 w-full rounded-md border border-hairline-strong bg-surface-card px-3 text-sm text-ink">
                 <option value="kill_service">Kill service</option>
                 <option value="degrade">Degrade</option>
                 <option value="latency_spike">Latency spike</option>
@@ -156,17 +156,17 @@ export function ChaosPanel({
         </form>
 
         <div className="space-y-2">
-          {rows.length === 0 && <div className="text-sm text-white/50">No chaos schedules yet.</div>}
+          {rows.length === 0 && <div className="text-sm text-ash">No chaos schedules yet.</div>}
           {rows.map((s) => (
-            <div key={s.id} className="flex items-center justify-between gap-3 rounded-md border border-white/[0.08] p-3">
+            <div key={s.id} className="flex items-center justify-between gap-3 rounded-md border border-hairline-strong p-3">
               <div className="min-w-0">
                 <div className="text-sm font-medium text-ink">{ACTION_LABEL[s.action] ?? s.action} · {serviceName(s.targetServiceId)}</div>
-                <div className="text-[11px] text-white/50 mt-0.5">
+                <div className="text-[11px] text-ash mt-0.5">
                   <code className="font-mono">{s.schedule}</code> · for {s.durationSec}s · last run {formatRelative(s.lastRunAt)}
                 </div>
               </div>
               <div className="flex items-center gap-1">
-                <span className={cn('text-[10px] uppercase tracking-wide', s.enabled ? 'text-accent-green' : 'text-white/40')}>
+                <span className={cn('text-[10px] uppercase tracking-wide', s.enabled ? 'text-accent-green' : 'text-ash')}>
                   {s.enabled ? 'on' : 'off'}
                 </span>
                 <Button size="sm" variant="outline" onClick={() => toggle(s.id, s.enabled)} disabled={busy === s.id}>

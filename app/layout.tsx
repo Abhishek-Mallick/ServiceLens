@@ -14,9 +14,9 @@ const display = Fraunces({ subsets: ['latin'], variable: '--font-display', displ
 const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono', display: 'swap' });
 
 export const metadata: Metadata = {
-  title: 'ServiceLens — Git-native microservice topology & regression testing',
+  title: 'ServiceLens — the mesh, observed',
   description:
-    'Infers API contracts and event flows from Git-backed microservices, maps live topology, and runs end-to-end regression tests with animated playback and real-time health rollups.',
+    'Onboard your microservices from GitHub, map their dependencies from code, monitor every app and datastore, and get incidents, on-call paging, AI root-cause analysis and draft fix PRs automatically.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -27,7 +27,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
             <TooltipProvider delayDuration={150}>
               {children}
-              <Toaster richColors position="bottom-right" />
+              <Toaster
+                theme="dark"
+                position="bottom-right"
+                toastOptions={{
+                  // DESIGN.md surfaces instead of sonner's own light palette.
+                  classNames: {
+                    toast: 'bg-surface-elevated border border-hairline-strong text-ink',
+                    description: 'text-mute',
+                    success: '[&_[data-icon]]:text-accent-green',
+                    error: '[&_[data-icon]]:text-accent-red',
+                    warning: '[&_[data-icon]]:text-accent-orange',
+                    info: '[&_[data-icon]]:text-accent-blue',
+                  },
+                }}
+              />
             </TooltipProvider>
           </ThemeProvider>
         </AuthProvider>

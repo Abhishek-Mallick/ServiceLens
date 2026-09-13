@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { HealthDashboard } from '@/components/health/health-dashboard';
 import { visibleTo } from '@/lib/access';
+import { atLeast, getRole } from '@/lib/membership';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,5 +46,6 @@ export default async function HealthPage({ params }: { params: { id: string } })
       })),
   }));
 
-  return <HealthDashboard architectureId={params.id} initialServices={servicesData} />;
+  const canEdit = atLeast(await getRole(params.id, session.user.id), 'editor');
+  return <HealthDashboard architectureId={params.id} initialServices={servicesData} canEdit={canEdit} />;
 }

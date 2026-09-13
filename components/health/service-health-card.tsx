@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { SimulatedBadge } from '@/components/shared/simulated-badge';
+import { statusColor } from '@/lib/design-tokens';
 import { cn, formatRelative } from '@/lib/utils';
 import type { ServiceHealthData } from './health-dashboard';
 import { LineChart, Line, ResponsiveContainer, YAxis } from 'recharts';
@@ -42,7 +43,7 @@ export function ServiceHealthCard({ service, selected, onClick }: Props) {
         <div className="flex items-start justify-between gap-2 mb-3">
           <div className="min-w-0">
             <div className="text-sm font-semibold truncate">{service.name}</div>
-            <div className="text-xs text-muted-foreground truncate">{service.framework ?? service.language ?? '—'}</div>
+            <div className="text-xs text-mute truncate">{service.framework ?? service.language ?? '—'}</div>
           </div>
           <div className="flex flex-col items-end gap-1">
             <StatusBadge status={service.healthStatus} />
@@ -52,12 +53,12 @@ export function ServiceHealthCard({ service, selected, onClick }: Props) {
         <div className="flex items-center gap-3 text-xs mb-3">
           <div>
             <div className="font-mono font-semibold">{latest?.responseTime ?? '—'}{latest?.responseTime ? 'ms' : ''}</div>
-            <div className="text-muted-foreground text-[10px]">response</div>
+            <div className="text-mute text-[10px]">response</div>
           </div>
           {uptimes.map((u) => (
             <div key={u.label}>
               <div className="font-mono font-semibold">{u.value}</div>
-              <div className="text-muted-foreground text-[10px]">{u.label} uptime</div>
+              <div className="text-mute text-[10px]">{u.label} uptime</div>
             </div>
           ))}
         </div>
@@ -69,7 +70,7 @@ export function ServiceHealthCard({ service, selected, onClick }: Props) {
               <Line
                 type="monotone"
                 dataKey="rt"
-                stroke={service.healthStatus === 'down' ? 'hsl(352 80% 55%)' : service.healthStatus === 'degraded' ? 'hsl(38 92% 50%)' : 'hsl(152 60% 45%)'}
+                stroke={statusColor[service.healthStatus === 'down' || service.healthStatus === 'degraded' ? service.healthStatus : 'healthy']}
                 strokeWidth={1.5}
                 dot={false}
                 isAnimationActive={false}
@@ -78,7 +79,7 @@ export function ServiceHealthCard({ service, selected, onClick }: Props) {
           </ResponsiveContainer>
           ) : <div className="h-full" suppressHydrationWarning />}
         </div>
-        <div className="text-[10px] text-muted-foreground mt-2">Last checked {formatRelative(service.lastHealthCheck)}</div>
+        <div className="text-[10px] text-mute mt-2">Last checked {formatRelative(service.lastHealthCheck)}</div>
       </CardContent>
     </Card>
   );

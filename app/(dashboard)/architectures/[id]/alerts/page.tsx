@@ -25,7 +25,9 @@ export default async function AlertsPage({ params }: { params: { id: string } })
   });
   if (!arch) notFound();
 
-  const canOwn = atLeast(await getRole(params.id, session.user.id), 'owner');
+  const role = await getRole(params.id, session.user.id);
+  const canOwn = atLeast(role, 'owner');
+  const canEdit = atLeast(role, 'editor');
   const [services, rules, chaos, oncall] = await Promise.all([
     prisma.service.findMany({ where: { architectureId: params.id }, select: { id: true, name: true }, orderBy: { name: 'asc' } }),
     prisma.alertRule.findMany({
@@ -67,9 +69,9 @@ export default async function AlertsPage({ params }: { params: { id: string } })
     <div className="p-6 lg:p-8 space-y-6">
       <div>
         <h2 className="text-xl font-semibold">Alert rules</h2>
-        <p className="text-sm text-muted-foreground mt-1">An incident opens once a rule's condition has held continuously for its <code className="text-xs">forDuration</code>. It auto-resolves when the condition has been clear for 2× the window.</p>
+        <p className="text-sm text-mute mt-1">An incident opens once a rule's condition has held continuously for its <code className="text-xs">forDuration</code>. It auto-resolves when the condition has been clear for 2× the window.</p>
       </div>
-      <AlertRulesPanel architectureId={params.id} services={services} initialRules={rows} />
+      <AlertRulesPanel architectureId={params.id} services={services} initialRules={rows} canEdit={canEdit} />
       {arch.demo && <ChaosPanel architectureId={params.id} services={services} initialSchedules={chaosRows} />}
       {!arch.demo && (
         <FixPrSettings architectureId={params.id} canEdit={canOwn} initialAuto={arch.autoFixPr} githubConfigured={githubAppConfigured()} />
@@ -89,6 +91,7 @@ export default async function AlertsPage({ params }: { params: { id: string } })
       )}
       <ArchitectureNotifications
         architectureId={params.id}
+        canEdit={canOwn}
         initial={{ slackConfigured: !!arch.slackWebhookUrl, slackMasked: maskWebhook(decryptSecret(arch.slackWebhookUrl)), notificationsEmail: arch.notificationsEmail }}
       />
     </div>

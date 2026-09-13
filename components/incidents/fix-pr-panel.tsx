@@ -31,17 +31,17 @@ interface Remediation {
 interface ApiError { message: string; installUrl?: string | null }
 
 function colorLine(line: string): string {
-  if (line.startsWith('+++') || line.startsWith('---')) return 'text-muted-foreground';
-  if (line.startsWith('@@')) return 'text-sky-400';
-  if (line.startsWith('+')) return 'text-emerald-400';
-  if (line.startsWith('-')) return 'text-rose-400';
-  return 'text-muted-foreground';
+  if (line.startsWith('+++') || line.startsWith('---')) return 'text-mute';
+  if (line.startsWith('@@')) return 'text-accent-blue';
+  if (line.startsWith('+')) return 'text-accent-green';
+  if (line.startsWith('-')) return 'text-accent-red';
+  return 'text-mute';
 }
 
 const STATE_STYLE: Record<string, string> = {
-  open: 'border-emerald-500/40 text-emerald-400',
-  merged: 'border-violet-500/40 text-violet-400',
-  closed: 'border-rose-500/40 text-rose-400',
+  open: 'border-accent-green/40 text-accent-green',
+  merged: 'border-accent-blue/40 text-accent-blue',
+  closed: 'border-accent-red/40 text-accent-red',
 };
 
 export function FixPrPanel({ incidentId, hasRca, canEdit = true }: { incidentId: string; hasRca: boolean; canEdit?: boolean }) {
@@ -123,7 +123,7 @@ export function FixPrPanel({ incidentId, hasRca, canEdit = true }: { incidentId:
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex items-center gap-2">
-          <FileText className="h-4 w-4 text-emerald-400" /> AI fix PR
+          <FileText className="h-4 w-4 text-accent-green" /> AI fix PR
         </CardTitle>
         <CardDescription className="flex items-center justify-between gap-2">
           <span>Generated from the RCA and the service&apos;s real source files. ServiceLens opens draft PRs only and never merges.</span>
@@ -137,41 +137,41 @@ export function FixPrPanel({ incidentId, hasRca, canEdit = true }: { incidentId:
       </CardHeader>
       <CardContent>
         {err && (
-          <div className="text-xs text-rose-400 mb-3">
+          <div className="text-xs text-accent-red mb-3">
             {err.message}
             {err.installUrl && (
               <> <a href={err.installUrl} target="_blank" rel="noreferrer" className="underline inline-flex items-center gap-1">Install the GitHub App <ExternalLink className="h-3 w-3" /></a></>
             )}
           </div>
         )}
-        {busy === 'gen' && <div className="text-sm text-muted-foreground mb-3">Reading the service source and asking the model for a fix. This can take up to a minute.</div>}
-        {!hasRca && !fix && busy === null && !err && <div className="text-xs text-muted-foreground">The fix is built from the root-cause analysis above, so generate it once the RCA has finished.</div>}
+        {busy === 'gen' && <div className="text-sm text-mute mb-3">Reading the service source and asking the model for a fix. This can take up to a minute.</div>}
+        {!hasRca && !fix && busy === null && !err && <div className="text-xs text-mute">The fix is built from the root-cause analysis above, so generate it once the RCA has finished.</div>}
         {hasRca && !fix && busy === null && !err && (
-          <div className="text-sm text-muted-foreground">{canEdit ? <>No fix yet. Click <em>Generate fix</em>.</> : 'No fix has been generated yet.'}</div>
+          <div className="text-sm text-mute">{canEdit ? <>No fix yet. Click <em>Generate fix</em>.</> : 'No fix has been generated yet.'}</div>
         )}
 
         {opened && remediation && (
-          <div className="rounded-md border border-border/60 p-3 mb-3 flex flex-wrap items-center gap-3">
-            <GitPullRequest className="h-4 w-4 text-emerald-400" />
+          <div className="rounded-md border border-hairline p-3 mb-3 flex flex-wrap items-center gap-3">
+            <GitPullRequest className="h-4 w-4 text-accent-green" />
             <a href={remediation.prUrl!} target="_blank" rel="noreferrer" className="text-sm font-medium hover:underline inline-flex items-center gap-1">
               {remediation.repoFullName}#{remediation.prNumber} <ExternalLink className="h-3 w-3" />
             </a>
             <span className={cn('rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide', STATE_STYLE[remediation.prState ?? 'open'])}>
               {remediation.prState === 'open' && remediation.draft ? 'draft' : remediation.prState}
             </span>
-            {remediation.auto && <span className="text-[11px] text-muted-foreground">opened automatically</span>}
+            {remediation.auto && <span className="text-[11px] text-mute">opened automatically</span>}
           </div>
         )}
 
         {fix && (
           <div className="space-y-3">
-            <div className="rounded-md border border-border/60 p-3 space-y-1">
+            <div className="rounded-md border border-hairline p-3 space-y-1">
               <div className="text-sm font-medium">{fix.prTitle}</div>
-              <div className="text-xs text-muted-foreground">
+              <div className="text-xs text-mute">
                 {fix.repo && <>{fix.repo} · </>}branch <code className="text-[11px] font-mono">{fix.branchName}</code>
                 {fix.baseSha && <> · from <code className="text-[11px] font-mono">{fix.baseBranch}@{fix.baseSha.slice(0, 7)}</code></>}
               </div>
-              <div className="text-xs text-muted-foreground">{fix.summary}</div>
+              <div className="text-xs text-mute">{fix.summary}</div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -183,19 +183,19 @@ export function FixPrPanel({ incidentId, hasRca, canEdit = true }: { incidentId:
               )}
               <Button size="sm" variant="outline" onClick={copyPatch}><Copy className="h-3.5 w-3.5" />Copy as patch</Button>
               <Button size="sm" variant="outline" onClick={downloadPatch}><Download className="h-3.5 w-3.5" />Download .patch</Button>
-              <span className="text-[11px] text-muted-foreground ml-auto">{fix.files.length} file{fix.files.length === 1 ? '' : 's'}</span>
+              <span className="text-[11px] text-mute ml-auto">{fix.files.length} file{fix.files.length === 1 ? '' : 's'}</span>
             </div>
             {!opened && canEdit && !githubConfigured && (
-              <p className="text-[11px] text-muted-foreground">To open PRs directly, configure the ServiceLens GitHub App (see docs/secrets.md). You can still copy the patch.</p>
+              <p className="text-[11px] text-mute">To open PRs directly, configure the ServiceLens GitHub App (see docs/secrets.md). You can still copy the patch.</p>
             )}
             {!opened && fix && !committable && (
-              <p className="text-[11px] text-muted-foreground">This proposal predates source-based fixes. Regenerate it to open it as a PR.</p>
+              <p className="text-[11px] text-mute">This proposal predates source-based fixes. Regenerate it to open it as a PR.</p>
             )}
 
             {fix.files.map((f, i) => (
-              <div key={i} className="rounded-md border border-border/60 overflow-hidden">
-                <div className="px-3 py-1.5 border-b border-border/60 bg-muted/30 text-xs font-mono">{f.path}</div>
-                <pre className="bg-black/40 text-[12px] font-mono leading-relaxed overflow-x-auto p-3 m-0">
+              <div key={i} className="rounded-md border border-hairline overflow-hidden">
+                <div className="px-3 py-1.5 border-b border-hairline bg-surface-elevated/30 text-xs font-mono">{f.path}</div>
+                <pre className="bg-canvas/40 text-[12px] font-mono leading-relaxed overflow-x-auto p-3 m-0">
                   {f.patch.split('\n').map((line, j) => (
                     <div key={j} className={cn(colorLine(line))}>{line || ' '}</div>
                   ))}
@@ -203,8 +203,8 @@ export function FixPrPanel({ incidentId, hasRca, canEdit = true }: { incidentId:
               </div>
             ))}
 
-            <details className="rounded-md border border-border/60 p-3">
-              <summary className="text-xs cursor-pointer text-muted-foreground">PR description (preview)</summary>
+            <details className="rounded-md border border-hairline p-3">
+              <summary className="text-xs cursor-pointer text-mute">PR description (preview)</summary>
               <pre className="mt-2 whitespace-pre-wrap font-sans text-sm">{fix.prBody}</pre>
             </details>
           </div>

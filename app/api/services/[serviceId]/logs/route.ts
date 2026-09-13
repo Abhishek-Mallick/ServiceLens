@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { ingestForService, findServiceByIngestToken, type IngestEntry } from '@/lib/logs';
+import { LIMITS, rateLimit, tooManyRequests } from '@/lib/rate-limit';
 
 const Entry = z.object({
   level: z.enum(['debug', 'info', 'warn', 'error']).optional(),
@@ -37,6 +38,8 @@ export async function POST(req: Request, { params }: { params: { serviceId: stri
   if (!svc || svc.id !== params.serviceId) {
     return NextResponse.json({ error: 'Invalid token for service' }, { status: 403 });
   }
+  const limit = rateLimit(`logs:${svc.id}`, LIMITS.logIngestPerMin);
+  if (!limit.ok) return tooManyRequests(limit, `Log ingest is limited to ${LIMITS.logIngestPerMin} requests/min per service. Batch entries into fewer requests.`);
   let entries: IngestEntry[];
   try {
     entries = await parseBody(req);

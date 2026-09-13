@@ -19,10 +19,16 @@ export default function LoginPage() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const res = await signIn('credentials', { email, password, redirect: false });
+    const res = await signIn('credentials', { email, password, redirect: false }).catch(() => undefined);
     setLoading(false);
     if (res?.error) {
       toast.error('Invalid credentials');
+      return;
+    }
+    if (!res?.ok) {
+      // No answer from the auth route (network error, server restarting): stay
+      // here rather than navigating to a page that would bounce back.
+      toast.error('Could not reach the server to sign in. Try again.');
       return;
     }
     toast.success('Welcome back');
@@ -31,7 +37,7 @@ export default function LoginPage() {
   }
 
   return (
-    <Card className="w-full max-w-md border-border/60">
+    <Card className="w-full max-w-md border-hairline">
       <CardHeader>
         <CardTitle className="text-2xl">Sign in</CardTitle>
         <CardDescription>
@@ -57,7 +63,7 @@ export default function LoginPage() {
             <span className="w-full border-t" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-card px-2 text-muted-foreground">or</span>
+            <span className="bg-surface-card px-2 text-mute">or</span>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2">
@@ -66,15 +72,15 @@ export default function LoginPage() {
           </Button>
           <Button variant="outline" className="w-full" onClick={() => signIn('google', { callbackUrl: '/dashboard' })}>
             <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden>
-              <path fill="#fff" d="M21.35 11.1H12v3.2h5.36a4.6 4.6 0 0 1-1.99 3.02v2.5h3.21c1.88-1.73 2.96-4.28 2.96-7.32 0-.77-.07-1.5-.19-2.4z"/>
-              <path fill="#fff" opacity=".85" d="M12 22c2.7 0 4.96-.9 6.61-2.43l-3.2-2.5c-.89.6-2.03.96-3.41.96-2.62 0-4.83-1.77-5.63-4.15H3.07v2.6A10 10 0 0 0 12 22z"/>
-              <path fill="#fff" opacity=".7" d="M6.37 13.88a6 6 0 0 1 0-3.76V7.52H3.07a10 10 0 0 0 0 8.96l3.3-2.6z"/>
-              <path fill="#fff" opacity=".55" d="M12 6.1c1.47 0 2.78.5 3.82 1.5l2.86-2.86C16.96 3.2 14.7 2 12 2A10 10 0 0 0 3.07 7.52l3.3 2.6C7.17 7.87 9.38 6.1 12 6.1z"/>
+              <path fill="currentColor" d="M21.35 11.1H12v3.2h5.36a4.6 4.6 0 0 1-1.99 3.02v2.5h3.21c1.88-1.73 2.96-4.28 2.96-7.32 0-.77-.07-1.5-.19-2.4z"/>
+              <path fill="currentColor" opacity=".85" d="M12 22c2.7 0 4.96-.9 6.61-2.43l-3.2-2.5c-.89.6-2.03.96-3.41.96-2.62 0-4.83-1.77-5.63-4.15H3.07v2.6A10 10 0 0 0 12 22z"/>
+              <path fill="currentColor" opacity=".7" d="M6.37 13.88a6 6 0 0 1 0-3.76V7.52H3.07a10 10 0 0 0 0 8.96l3.3-2.6z"/>
+              <path fill="currentColor" opacity=".55" d="M12 6.1c1.47 0 2.78.5 3.82 1.5l2.86-2.86C16.96 3.2 14.7 2 12 2A10 10 0 0 0 3.07 7.52l3.3 2.6C7.17 7.87 9.38 6.1 12 6.1z"/>
             </svg>
             Google
           </Button>
         </div>
-        <p className="text-center text-sm text-muted-foreground">
+        <p className="text-center text-sm text-mute">
           New here?{' '}
           <Link href="/register" className="font-medium text-primary hover:underline">
             Create an account

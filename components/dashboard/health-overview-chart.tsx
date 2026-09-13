@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from 'recharts';
+import { statusColor } from '@/lib/design-tokens';
 
 interface Props {
   healthy: number;
@@ -15,16 +16,16 @@ export function HealthOverviewChart({ healthy, degraded, down, unknown }: Props)
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
   const data = [
-    { name: 'Healthy', value: healthy, color: 'hsl(152 60% 45%)' },
-    { name: 'Degraded', value: degraded, color: 'hsl(38 92% 50%)' },
-    { name: 'Down', value: down, color: 'hsl(352 80% 55%)' },
-    { name: 'Unknown', value: unknown, color: 'hsl(215 16% 55%)' },
+    { name: 'Healthy', value: healthy, color: statusColor.healthy },
+    { name: 'Degraded', value: degraded, color: statusColor.degraded },
+    { name: 'Down', value: down, color: statusColor.down },
+    { name: 'Unknown', value: unknown, color: statusColor.unknown },
   ].filter((d) => d.value > 0);
 
   const total = healthy + degraded + down + unknown;
 
   if (total === 0) {
-    return <div className="flex h-[180px] items-center justify-center text-sm text-muted-foreground">No services to report yet.</div>;
+    return <div className="flex h-[180px] items-center justify-center text-sm text-mute">No services to report yet.</div>;
   }
 
   if (!mounted) {
@@ -44,8 +45,8 @@ export function HealthOverviewChart({ healthy, degraded, down, unknown }: Props)
         </PieChart>
       </ResponsiveContainer>
       <div className="text-center text-sm">
-        <span className="font-semibold text-success">{healthy}</span>
-        <span className="text-muted-foreground"> of {total} services healthy</span>
+        <span className="font-semibold text-accent-green">{healthy}</span>
+        <span className="text-mute"> of {total} services healthy</span>
       </div>
     </div>
   );

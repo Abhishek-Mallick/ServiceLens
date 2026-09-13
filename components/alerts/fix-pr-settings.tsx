@@ -46,10 +46,10 @@ export function FixPrSettings({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex items-center justify-between gap-4 rounded-md border border-border/60 p-3">
+        <div className="flex items-center justify-between gap-4 rounded-md border border-hairline p-3">
           <div className="text-sm">
-            Status: <span className={auto ? 'text-emerald-400' : 'text-muted-foreground'}>{auto ? 'On' : 'Off'}</span>
-            <div className="text-[12px] text-muted-foreground mt-0.5">Off means fixes are generated and opened only when someone clicks on the incident page.</div>
+            Status: <span className={auto ? 'text-accent-green' : 'text-mute'}>{auto ? 'On' : 'Off'}</span>
+            <div className="text-[12px] text-mute mt-0.5">Off means fixes are generated and opened only when someone clicks on the incident page.</div>
           </div>
           {canEdit && (
             <Button size="sm" variant={auto ? 'outline' : 'default'} onClick={toggle} disabled={saving || (!auto && !githubConfigured)}>
@@ -58,12 +58,12 @@ export function FixPrSettings({
           )}
         </div>
         {!githubConfigured && (
-          <p className="text-[12px] text-amber-400">
+          <p className="text-[12px] text-accent-yellow">
             The ServiceLens GitHub App isn&apos;t configured on this deployment (GITHUB_APP_ID / GITHUB_APP_PRIVATE_KEY), so PRs can&apos;t be opened.
           </p>
         )}
         {githubConfigured && (
-          <p className="text-[12px] text-muted-foreground">Each service&apos;s repository must have the ServiceLens GitHub App installed. If it doesn&apos;t, the incident page shows an install link.</p>
+          <p className="text-[12px] text-mute">Each service&apos;s repository must have the ServiceLens GitHub App installed. If it doesn&apos;t, the incident page shows an install link.</p>
         )}
       </CardContent>
     </Card>

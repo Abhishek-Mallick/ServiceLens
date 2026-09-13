@@ -61,8 +61,8 @@ export function ApiKeysPanel({ architectureId, appUrl, initialKeys }: { architec
         </div>
 
         {fresh && (
-          <div className="rounded-md border border-emerald-500/40 bg-emerald-500/5 p-3 space-y-2">
-            <div className="text-[12px] text-emerald-400">Copy this key now. It won&apos;t be shown again.</div>
+          <div className="rounded-md border border-accent-green/40 bg-accent-green/5 p-3 space-y-2">
+            <div className="text-[12px] text-accent-green">Copy this key now. It won&apos;t be shown again.</div>
             <div className="flex items-center gap-2">
               <code className="flex-1 truncate font-mono text-[12px]">{fresh}</code>
               <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(fresh); toast.success('Key copied'); }}><Copy className="h-3.5 w-3.5" /></Button>
@@ -70,23 +70,23 @@ export function ApiKeysPanel({ architectureId, appUrl, initialKeys }: { architec
           </div>
         )}
 
-        <pre className="rounded-md border border-border/60 bg-black/40 p-3 text-[11px] font-mono overflow-x-auto whitespace-pre">{example}</pre>
+        <pre className="rounded-md border border-hairline bg-canvas/40 p-3 text-[11px] font-mono overflow-x-auto whitespace-pre">{example}</pre>
 
         {keys.length > 0 && (
-          <div className="overflow-x-auto rounded-md border border-border/60">
+          <div className="overflow-x-auto rounded-md border border-hairline">
             <table className="w-full text-[12px]">
-              <thead className="text-left text-muted-foreground">
+              <thead className="text-left text-mute">
                 <tr><th className="px-3 py-2 font-medium">Name</th><th className="px-3 py-2 font-medium">Key</th><th className="px-3 py-2 font-medium">Last used</th><th className="px-3 py-2" /></tr>
               </thead>
               <tbody>
                 {keys.map((k) => (
-                  <tr key={k.id} className="border-t border-border/60">
+                  <tr key={k.id} className="border-t border-hairline">
                     <td className="px-3 py-2">{k.name}</td>
-                    <td className="px-3 py-2 font-mono text-muted-foreground">{k.prefix}…</td>
-                    <td className="px-3 py-2 text-muted-foreground">{k.lastUsedAt ? formatRelative(new Date(k.lastUsedAt)) : 'never'}</td>
+                    <td className="px-3 py-2 font-mono text-mute">{k.prefix}…</td>
+                    <td className="px-3 py-2 text-mute">{k.lastUsedAt ? formatRelative(new Date(k.lastUsedAt)) : 'never'}</td>
                     <td className="px-3 py-2 text-right">
                       {k.revokedAt ? (
-                        <span className="text-muted-foreground">revoked</span>
+                        <span className="text-mute">revoked</span>
                       ) : confirming === k.id ? (
                         <Button size="sm" variant="destructive" onClick={() => revoke(k.id)}>Confirm revoke</Button>
                       ) : (

@@ -119,11 +119,11 @@ export async function assembleContext(incidentId: string): Promise<RcaContext | 
           status: 'resolved',
           serviceId: incident.serviceId,
           id: { not: incident.id },
-          resolution: { not: null },
+          OR: [{ resolution: { not: null } }, { resolutionSummary: { not: null } }],
         },
         orderBy: { resolvedAt: 'desc' },
         take: 20,
-        select: { title: true, summary: true, resolution: true, resolvedAt: true },
+        select: { title: true, summary: true, resolution: true, resolutionSummary: true, resolvedAt: true },
       })
     : [];
 
@@ -156,7 +156,8 @@ export async function assembleContext(incidentId: string): Promise<RcaContext | 
     failedRegression: (recentRun?.steps ?? []).map((s) => ({ service: s.service.name, step: s.name, error: s.errorMessage ?? '' })),
     priorResolved: ranked.map(({ p }) => ({
       title: p.title,
-      resolution: p.resolution ?? '',
+      // A human note wins; otherwise the facts-only summary ServiceLens recorded.
+      resolution: p.resolution ?? (p.resolutionSummary ? `(auto-recorded) ${p.resolutionSummary}` : ''),
       ageDays: p.resolvedAt ? Math.floor((Date.now() - p.resolvedAt.getTime()) / 86_400_000) : 0,
     })),
   };

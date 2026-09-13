@@ -13,7 +13,7 @@ Everything you need to run ServiceLens on your machine — database, environment
 | Node.js | 18+ | LTS recommended |
 | npm | 9+ | ships with Node |
 | Docker | optional | only needed for local Postgres / Mailpit |
-| git | optional | required if you use **Analyze** (repo cloning) |
+| Postgres CLI | optional | `psql` / `dig` help with troubleshooting |
 
 ---
 
@@ -124,7 +124,23 @@ npm run db:reset         # force-reset schema + reseed
 npm run db:migrate-demo  # one-off: flag a pre-existing seeded mesh as demo (see below)
 
 npm run worker           # standalone monitoring scheduler (use with SCHEDULER=off on the web tier)
+
+npm test                 # unit tests (Vitest)
+npm run test:e2e         # Playwright against the seeded demo (starts its own dev server on :3100)
 ```
+
+### End-to-end tests
+
+`npm run test:e2e` starts `next dev` on port 3100 plus local fakes (`tests/e2e/fakes/server.cjs`). The fakes stand in for GitHub, the GitHub App, the LLM, a monitored service and an on-call sheet. The app under test gets `GITHUB_API_URL`, `OPENROUTER_BASE_URL` and a throwaway App key pointing at them, and email and real tokens are blanked, so nothing leaves your machine.
+
+The **golden path** spec (`golden-path.spec.ts`) creates a user and an architecture and runs a full outage through to a draft PR and auto-resolve. It runs in CI. Locally it's skipped unless you opt in, and only against a **scratch database**, never your real one:
+
+```bash
+DATABASE_URL=postgresql://…/scratch DIRECT_URL=postgresql://…/scratch npx prisma db push
+DATABASE_URL=postgresql://…/scratch DIRECT_URL=postgresql://…/scratch E2E_GOLDEN=1 npx playwright test
+```
+
+Don't edit app files while it runs: the dev server's full reloads drop in-flight form submissions.
 
 ---
 
@@ -165,13 +181,15 @@ If your database was seeded before this flag existed, run `npm run prisma:push &
 
 | Variable | Enables |
 |---|---|
-| `OPENROUTER_API_KEYS` | Streamed LLM root-cause analysis + fix-PR generation |
+| `OPENROUTER_API_KEY` / `OPENROUTER_API_KEYS` | Streamed LLM root-cause analysis + fix-PR generation (one key, or a comma-separated pool) |
 | `GITHUB_CLIENT_ID` / `SECRET` | Sign in with GitHub |
 | `GOOGLE_CLIENT_ID` / `SECRET` | Sign in with Google |
 | `RESEND_API_KEY` / `RESEND_FROM` | Email incident notifications |
-| `SLACK_WEBHOOK_URL` | Slack incident posts (per-architecture override in UI) |
-| `GITHUB_APP_*` | Open a real draft PR from the fix-PR flow |
+| `GITHUB_APP_ID` / `GITHUB_APP_PRIVATE_KEY` | Read private repos and open draft fix PRs |
+| `GITHUB_TOKEN` | Analyze repos the App isn't installed on |
 | `CRON_SECRET` | Bearer guard on `/api/cron/tick` |
+
+Slack is configured per architecture in the UI (Alerts → Notification routing); there is no global Slack variable.
 
 Full setup instructions: **[`env_get.md`](./env_get.md)**.
 
@@ -181,8 +199,16 @@ Full setup instructions: **[`env_get.md`](./env_get.md)**.
 
 **`prisma db push` fails on Neon** — confirm `DIRECT_URL` is the unpooled connection string, not the pooler URL.
 
-**RCA shows heuristic text instead of LLM output** — set `OPENROUTER_API_KEYS` (comma-separated pool supported). The app falls back when keys are absent or rate-limited.
+**`P1001: Can't reach database server` on Neon** — often your network's DNS refuses `*.neon.tech` (check with `dig <host>` vs `dig @1.1.1.1 <host>`). Without changing system DNS, dial it by IP for one command:
 
-**Analyze / clone fails** — ensure `git` is installed and reachable from the shell running Next.js.
+```bash
+IP=$(dig +short @1.1.1.1 <endpoint>.<region>.aws.neon.tech | tail -1)
+U=$(node --env-file=.env scripts/neon-ip-url.cjs "$IP")
+DIRECT_URL="$U" DATABASE_URL="$U" npm run prisma:push
+```
+
+**RCA shows heuristic text instead of LLM output** — set `OPENROUTER_API_KEY` (or a comma-separated `OPENROUTER_API_KEYS` pool). The app falls back when keys are absent or rate-limited.
+
+**Analysis fails (rate limit / not found)** — repos are read through the GitHub API, no `git` needed. Install the GitHub App on private repos (or set `GITHUB_TOKEN`) and check the branch name.
 
 **SSE events don't cross browser tabs on Vercel** — expected on multi-instance serverless; see realtime notes in **[`deploy_vercel.md`](./deploy_vercel.md)**.

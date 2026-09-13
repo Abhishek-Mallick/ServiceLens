@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { grantDemoAccess } from '@/lib/membership';
+import { LIMITS, clientIp, rateLimit, tooManyRequests } from '@/lib/rate-limit';
 
 const schema = z.object({
   name: z.string().min(1),
@@ -11,6 +12,8 @@ const schema = z.object({
 });
 
 export async function POST(req: Request) {
+  const limit = rateLimit(`signup:${clientIp(req)}`, LIMITS.signupPer10Min, 10 * 60_000);
+  if (!limit.ok) return tooManyRequests(limit, 'Too many sign-up attempts from this network. Try again in a few minutes.');
   const body = await req.json().catch(() => null);
   const parsed = schema.safeParse(body);
   if (!parsed.success) {

@@ -93,7 +93,7 @@ export function ServiceSettings({ architectureId, serviceId, initial }: { archit
             <div className="ml-auto">
               {confirmDelete ? (
                 <div className="flex items-center gap-2">
-                  <span className="text-[12px] text-muted-foreground">Delete {initial.name}, its health history and probes?</span>
+                  <span className="text-[12px] text-mute">Delete {initial.name}, its health history and probes?</span>
                   <Button type="button" size="sm" variant="destructive" onClick={remove} disabled={busy !== null}>
                     {busy === 'delete' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Delete'}
                   </Button>

@@ -8,6 +8,7 @@ import { handleEscalate, handleIncidentOpened, handleNotify, handleRca } from '.
 import type { IncidentTemplate } from './incidents';
 import { handleAutoFixPr } from './remediation';
 import { runContractTests } from './contract-tests';
+import { summarizeResolution } from './runbook';
 
 let registered = false;
 
@@ -31,4 +32,5 @@ export function registerJobHandlers(): void {
   registerHandler<{ incidentId: string; template: IncidentTemplate }, unknown>('notify', ({ payload }) =>
     handleNotify(payload.incidentId, payload.template)
   );
+  registerHandler<{ incidentId: string }, unknown>('resolution_summary', ({ payload }) => summarizeResolution(payload.incidentId));
 }

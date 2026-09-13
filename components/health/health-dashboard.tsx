@@ -30,7 +30,7 @@ export interface ServiceHealthData {
   history: HealthEntry[];
 }
 
-export function HealthDashboard({ architectureId, initialServices }: { architectureId: string; initialServices: ServiceHealthData[] }) {
+export function HealthDashboard({ architectureId, initialServices, canEdit }: { architectureId: string; initialServices: ServiceHealthData[]; canEdit: boolean }) {
   const router = useRouter();
   const [services, setServices] = useState(initialServices);
   const [refreshing, setRefreshing] = useState(false);
@@ -121,15 +121,15 @@ export function HealthDashboard({ architectureId, initialServices }: { architect
     <div className="p-6 lg:p-8 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <Activity className="h-5 w-5 text-success" />
+          <Activity className="h-5 w-5 text-accent-green" />
           <div>
             <div className="text-sm">
-              <span className="font-semibold text-success">{totals.healthy}</span>
-              <span className="text-muted-foreground">/{services.length} services healthy</span>
-              {totals.degraded > 0 && <span className="ml-2 text-warning">· {totals.degraded} degraded</span>}
-              {totals.down > 0 && <span className="ml-2 text-destructive">· {totals.down} down</span>}
+              <span className="font-semibold text-accent-green">{totals.healthy}</span>
+              <span className="text-mute">/{services.length} services healthy</span>
+              {totals.degraded > 0 && <span className="ml-2 text-accent-orange">· {totals.degraded} degraded</span>}
+              {totals.down > 0 && <span className="ml-2 text-accent-red">· {totals.down} down</span>}
             </div>
-            <div className="text-xs text-muted-foreground flex items-center gap-2">
+            <div className="text-xs text-mute flex items-center gap-2">
               Last checked: {latestCheck ? formatRelative(new Date(latestCheck)) : 'never'} · checked server-side every minute
               {live && (
                 <span className="inline-flex items-center gap-1 text-accent-green">
@@ -139,10 +139,12 @@ export function HealthDashboard({ architectureId, initialServices }: { architect
             </div>
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={() => refresh(true)} disabled={refreshing}>
-          <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-          Probe now
-        </Button>
+        {canEdit && (
+          <Button variant="outline" size="sm" onClick={() => refresh(true)} disabled={refreshing}>
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+            Probe now
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">

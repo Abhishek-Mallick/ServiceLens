@@ -43,10 +43,10 @@ export default async function IncidentsPage({ params }: { params: { id: string }
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-amber-400" />
+            <AlertTriangle className="h-5 w-5 text-accent-yellow" />
             Incidents
           </h2>
-          <p className="text-sm text-muted-foreground mt-1">{open.length} open · {resolved.length} resolved</p>
+          <p className="text-sm text-mute mt-1">{open.length} open · {resolved.length} resolved</p>
         </div>
         {arch.demo && <TriggerSyntheticButton architectureId={params.id} />}
       </div>
@@ -54,17 +54,17 @@ export default async function IncidentsPage({ params }: { params: { id: string }
       <Card>
         <CardHeader><CardTitle className="text-base">Open</CardTitle></CardHeader>
         <CardContent className="pt-0 space-y-2">
-          {open.length === 0 && <div className="text-sm text-muted-foreground">No open incidents.</div>}
+          {open.length === 0 && <div className="text-sm text-mute">No open incidents.</div>}
           {open.map((i) => (
             <Link key={i.id} href={`/architectures/${params.id}/incidents/${i.id}`}
-              className="flex items-center justify-between gap-3 rounded-md border border-border/60 p-3 hover:border-primary/40 transition-colors">
+              className="flex items-center justify-between gap-3 rounded-md border border-hairline p-3 hover:border-primary/40 transition-colors">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <SeverityBadge severity={i.severity} />
                   <span className="text-sm font-medium truncate">{i.title}</span>
                   {i.simulated && <SimulatedBadge />}
                 </div>
-                <div className="text-xs text-muted-foreground mt-1">
+                <div className="text-xs text-mute mt-1">
                   Opened {formatRelative(i.openedAt)}
                   {i.service && <> · {i.service.name}</>}
                   {i.rule && <> · via "{i.rule.name}"</>}
@@ -80,19 +80,19 @@ export default async function IncidentsPage({ params }: { params: { id: string }
       <Card>
         <CardHeader><CardTitle className="text-base">Resolved</CardTitle></CardHeader>
         <CardContent className="pt-0 space-y-2">
-          {resolved.length === 0 && <div className="text-sm text-muted-foreground">No history yet.</div>}
+          {resolved.length === 0 && <div className="text-sm text-mute">No history yet.</div>}
           {resolved.slice(0, 25).map((i) => {
             const ttr = i.resolvedAt ? Math.max(0, Math.floor((i.resolvedAt.getTime() - i.openedAt.getTime()) / 1000)) : null;
             return (
               <Link key={i.id} href={`/architectures/${params.id}/incidents/${i.id}`}
-                className="flex items-center justify-between gap-3 rounded-md border border-border/60 p-3 hover:border-primary/40 transition-colors">
+                className="flex items-center justify-between gap-3 rounded-md border border-hairline p-3 hover:border-primary/40 transition-colors">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <SeverityBadge severity={i.severity} />
                     <span className="text-sm font-medium truncate">{i.title}</span>
                     {i.simulated && <SimulatedBadge />}
                   </div>
-                  <div className="text-xs text-muted-foreground mt-1">
+                  <div className="text-xs text-mute mt-1">
                     {formatRelative(i.openedAt)}
                     {ttr != null && <> · resolved in {ttr < 60 ? `${ttr}s` : `${Math.round(ttr / 60)}m`}</>}
                   </div>

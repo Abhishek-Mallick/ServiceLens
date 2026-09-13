@@ -5,9 +5,10 @@
 import crypto from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { prisma } from './prisma';
+import { LIMITS, rateLimit } from './rate-limit';
 
 const KEY_RE = /^slk_[A-Za-z0-9_-]{32}$/;
-const RATE_LIMIT_PER_MIN = 120;
+const RATE_LIMIT_PER_MIN = LIMITS.v1PerMin;
 
 export function hashApiKey(key: string): string {
   return crypto.createHash('sha256').update(key).digest('hex');
@@ -23,16 +24,9 @@ export function extractBearer(header: string | null): string | null {
   return m && KEY_RE.test(m[1]) ? m[1] : null;
 }
 
-// In-memory per-key limiter (per instance). Good enough to stop a runaway CI loop.
-const buckets = new Map<string, { windowStart: number; count: number }>();
+// Per-key limit (per instance, lib/rate-limit.ts). Stops a runaway CI loop.
 export function overRateLimit(keyId: string, now = Date.now()): boolean {
-  const b = buckets.get(keyId);
-  if (!b || now - b.windowStart >= 60_000) {
-    buckets.set(keyId, { windowStart: now, count: 1 });
-    return false;
-  }
-  b.count++;
-  return b.count > RATE_LIMIT_PER_MIN;
+  return !rateLimit(`v1:${keyId}`, RATE_LIMIT_PER_MIN, 60_000, now).ok;
 }
 
 export interface ApiKeyAuth {

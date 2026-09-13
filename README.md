@@ -32,18 +32,18 @@ Full diagrams — observability loop, incident lifecycle, RCA pipeline, fix-PR f
 
 | Area | Capability | Highlights |
 |---|---|---|
-| **Discovery** | Service topology | Git-backed clone + analysis; infers frameworks, API contracts, event flows, and dependency edges into an interactive graph with live health overlays |
+| **Discovery** | Service topology | Reads each repo through the GitHub API at a pinned commit (no clone); extracts Express/Next.js routes and env-var dependencies, derives edges between services, and lets people confirm or correct them. The architecture home is a live graph with health and incident overlays |
 | **Discovery** | Self-registration | Architecture API keys + idempotent `PUT /api/v1/services/{name}` for CI and agents (`/SKILL.md`) |
-| **Observability** | Health probes | HTTP/TCP probes run server-side on a schedule (SSRF-guarded); heartbeats (push) for private services; simulated data only on the demo mesh |
-| **Observability** | Alert rules | JSON DSL (`status_eq`, `p95_latency_gt`, `error_rate_gt`, `consecutive_down`, `regression_failed`); duration windows + auto-resolve |
-| **Observability** | Log aggregation | HEC-style bearer-token ingest, search, SSE live tail, synthetic logs correlated with health |
-| **Observability** | Regression testing | Flow discovery + contract validation across the service mesh |
-| **Reliability** | Incident management | Lifecycle `open → acknowledged → resolved`; dedup, assignment, comments, audit timeline, open-time log snapshot |
-| **Reliability** | Runbook memory | Resolution notes from past incidents feed future RCA via keyword-overlap retrieval |
-| **Reliability** | Chaos engineering | Scheduled or manual `kill_service` / `degrade` / `latency_spike` to validate detect → incident → RCA end-to-end |
+| **Observability** | Health probes | HTTP/TCP, Postgres and Redis checks run server-side on a schedule (SSRF-guarded); heartbeats (push) for private services; simulated data only on the demo mesh |
+| **Observability** | Alert rules | JSON DSL (`status_eq`, `p95_latency_gt`, `error_rate_gt`, `consecutive_down`, `regression_failed`); Prometheus-style `for` durations + auto-resolve; 3 default rules per architecture |
+| **Observability** | Log aggregation | HEC-style bearer-token ingest (rate-limited), search, SSE live tail; synthetic logs only on the demo |
+| **Observability** | Contract tests | Every parameter-free GET route found in the code is called on the deployed URL to catch deploy drift and 5xx — manually, on a schedule, or as a CI gate |
+| **Reliability** | Incidents & paging | One incident per service, auto-opened and auto-resolved; on-call sheet with escalation; email/Slack with a scanner-safe magic-link acknowledge |
+| **Reliability** | Runbook memory | Human resolution notes, or a facts-only summary ServiceLens records on auto-resolve (duration, ack, RCA cause, fix PR), feed future RCAs |
+| **Reliability** | Chaos drills | Demo mesh only (they write simulated health) |
 | **AI SRE** | Root-cause analysis | 6-signal context assembly (health, neighbors, logs, regressions, runbook); streamed markdown RCA over SSE |
 | **AI SRE** | Fix PRs | Generated from the RCA and the service's real source at a pinned commit; the diff is computed server-side; opened as a **draft PR** via the GitHub App (manual or automatic). Conflict-checked, 1 PR/repo/hour, never merges |
-| **Realtime** | Live updates | Multiplexed SSE — topology pulses, health changes, incident bell; no polling |
+| **Realtime** | Live updates | Multiplexed SSE per architecture — topology pulses, health changes, incidents (single instance; the bell polls) |
 | **Realtime** | Notifications | In-app feed, Resend email, Slack webhooks with magic-link acknowledge |
 | **Platform** | Multi-user workspaces | Per-architecture `owner` / `editor` / `viewer` roles; append-only audit log on every mutation |
 
@@ -62,9 +62,9 @@ Root-cause analysis is evidence-first, not a black-box chatbot.
    - Up to three prior resolved incidents on the same service, ranked by keyword overlap (runbook RAG-lite)
 3. **Stream** — A structured prompt is sent to OpenRouter. Tokens stream to the incident detail page over SSE and persist incrementally to the database.
 4. **Report** — The model produces markdown with three sections: **Likely root cause**, **Evidence** (citing specific timestamps and log lines), and **Suggested next steps**.
-5. **Act** — **Generate fix PR** runs a follow-up LLM call that outputs a patch-ready JSON diff, optionally opened as a GitHub draft PR.
+5. **Act** — The fix step reads the source files the RCA points at (at a pinned commit), asks the model for full corrected files, computes the diff server-side and opens a **draft PR** through the GitHub App — on click, or automatically in auto mode. It never merges.
 
-When the LLM is unavailable, a heuristic fallback still streams so the workflow remains demonstrable.
+On real architectures the RCA runs as a background job the moment the incident opens. When the LLM is unavailable the RCA falls back to a heuristic report; fix PRs are never faked and return a clear "AI unavailable" error instead.
 
 The RCA prompt design emphasizes **evidence citation and causal-chain reasoning** — the same skills the Incident Triage grader rewards during training (direct evidence hits, dependency-tracing strategy, red-herring penalties). On held-out benchmark scenarios in the training environment, fine-tuned models reach **~76% composite score** (diagnosis, policy compliance, blast-radius, and PR-proposal heads combined) — a **+102% lift** over the base model baseline.
 
@@ -95,7 +95,7 @@ The environment models the full oncall loop — not a static QA benchmark. Six e
 |---|---|
 | `obsly.query_logs` / `query_metric` / `get_trace` | HEC log ingest, health probes, sparkline metrics |
 | `trace_dependencies` | Topology graph + 1-hop neighbor health in RCA |
-| `repohub.recent_commits` / `get_diff` / `open_pr` | Git analyzer + fix-PR generation |
+| `repohub.recent_commits` / `get_diff` / `open_pr` | GitHub ingestion at a pinned commit + draft fix PRs via the GitHub App |
 | `chatops.page_oncall` | Slack + email incident notifications |
 | `submit_diagnosis` + blast-radius + PR proposal | Incident RCA markdown + structured fix-PR JSON |
 | `PolicyEngine` (change-freeze, UAT bypass, CI gates) | Alert rules, chaos drills, operational runbook memory |
@@ -124,9 +124,9 @@ ServiceLens applies these trained investigative patterns in production: topology
 | **Resend** | Transactional email for incident notifications |
 | **Slack** | Webhook posts with Block Kit formatting and one-click acknowledge links |
 | **GitHub OAuth** | Sign-in provider |
-| **GitHub App** | Optional — open draft PRs from the fix-PR flow |
-| **Git remotes** | Shallow clone + analyze for topology discovery |
-| **External cron / worker** | Drives chaos schedules and background job drain via `/api/cron/tick` |
+| **GitHub App** | Reads private repos and opens draft fix PRs; install it per repo from the Services tab |
+| **GitHub API** | Repo ingestion for topology discovery (tree + files at a pinned commit, no clone) |
+| **External cron / worker** | Drives probes, alert rules and the job queue via `/api/cron/tick` on serverless hosts |
 
 Step-by-step credential setup: **[`docs/env_get.md`](./docs/env_get.md)**.
 
@@ -137,7 +137,7 @@ Step-by-step credential setup: **[`docs/env_get.md`](./docs/env_get.md)**.
 | Layer | Technology |
 |---|---|
 | Framework | Next.js 14 (App Router), TypeScript, React 18 |
-| UI | Tailwind CSS, shadcn/ui, React Flow, Recharts, Framer Motion |
+| UI | Tailwind CSS generated from `DESIGN.md` tokens (`lib/design-tokens.ts`), Radix primitives, React Flow, Recharts |
 | Backend | Next.js Route Handlers, SSE streams, Prisma ORM |
 | Database | PostgreSQL |
 | Auth | NextAuth (credentials + OAuth) |

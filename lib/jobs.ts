@@ -18,7 +18,8 @@ export type JobType =
   | 'chaos'
   | 'incident_opened'
   | 'escalate'
-  | 'contract_tests';
+  | 'contract_tests'
+  | 'resolution_summary';
 
 export interface JobHandlerContext<P> {
   jobId: string;

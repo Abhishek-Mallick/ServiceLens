@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 // DESIGN.md feature-card: surface-card bg, 12px radius, hairline border, no shadow.
 const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('rounded-lg border border-white/[0.08] bg-surface-card text-ink', className)} {...props} />
+    <div ref={ref} className={cn('rounded-lg border border-hairline-strong bg-surface-card text-ink', className)} {...props} />
   )
 );
 Card.displayName = 'Card';
@@ -25,7 +25,7 @@ CardTitle.displayName = 'CardTitle';
 
 const CardDescription = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('text-sm text-muted-foreground', className)} {...props} />
+    <div ref={ref} className={cn('text-sm text-mute', className)} {...props} />
   )
 );
 CardDescription.displayName = 'CardDescription';

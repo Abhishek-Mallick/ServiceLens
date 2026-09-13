@@ -105,7 +105,7 @@ export function RegressionRunner({ architectureId, architectureName, graph, serv
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">Regression runner</h2>
-          <p className="text-sm text-muted-foreground">Execute end-to-end flows across <span className="font-medium text-foreground">{architectureName}</span>.</p>
+          <p className="text-sm text-mute">Execute end-to-end flows across <span className="font-medium text-ink">{architectureName}</span>.</p>
         </div>
         <Button size="lg" onClick={onRun} disabled={running || flows.length === 0}>
           {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
@@ -117,10 +117,10 @@ export function RegressionRunner({ architectureId, architectureName, graph, serv
         <Card className="lg:col-span-2 overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between gap-2">
             <CardTitle>Live flow</CardTitle>
-            {progressText && <span className="text-xs text-muted-foreground font-mono truncate">{progressText}</span>}
+            {progressText && <span className="text-xs text-mute font-mono truncate">{progressText}</span>}
           </CardHeader>
           <CardContent className="pt-0">
-            <div className="h-[440px] rounded-md border border-border/60 overflow-hidden">
+            <div className="h-[440px] rounded-md border border-hairline overflow-hidden">
               <MeshGraph graph={graph} services={services} highlightEdgeIds={activeEdges} pulseServiceIds={activeServices} />
             </div>
           </CardContent>
@@ -133,13 +133,13 @@ export function RegressionRunner({ architectureId, architectureName, graph, serv
           </CardHeader>
           <CardContent className="pt-0 space-y-3">
             {flows.map((f) => (
-              <div key={f.id} className="rounded-md border border-border/60 p-3">
+              <div key={f.id} className="rounded-md border border-hairline p-3">
                 <div className="text-sm font-medium">{f.name}</div>
-                <div className="text-xs text-muted-foreground mt-0.5">{f.description}</div>
-                <div className="text-[11px] text-muted-foreground mt-2">{f.steps.length} steps</div>
+                <div className="text-xs text-mute mt-0.5">{f.description}</div>
+                <div className="text-[11px] text-mute mt-2">{f.steps.length} steps</div>
               </div>
             ))}
-            {flows.length === 0 && <div className="text-xs text-muted-foreground">No flows discovered yet. Analyze services first.</div>}
+            {flows.length === 0 && <div className="text-xs text-mute">No flows discovered yet. Analyze services first.</div>}
           </CardContent>
         </Card>
       </div>
@@ -149,29 +149,29 @@ export function RegressionRunner({ architectureId, architectureName, graph, serv
           <CardTitle>Run history</CardTitle>
           <CardDescription>{runs.length} past runs</CardDescription>
         </CardHeader>
-        <CardContent className="pt-0 divide-y divide-border/60">
-          {runs.length === 0 && <div className="text-sm text-muted-foreground py-4">No runs yet.</div>}
+        <CardContent className="pt-0 divide-y divide-hairline">
+          {runs.length === 0 && <div className="text-sm text-mute py-4">No runs yet.</div>}
           {runs.map((r) => {
             const passRate = r.totalSteps ? Math.round((r.passedSteps / r.totalSteps) * 100) : 0;
             return (
-              <Link key={r.id} href={`/architectures/${architectureId}/regression/${r.id}`} className="flex items-center justify-between gap-3 py-3 hover:bg-accent/40 -mx-4 px-4 rounded">
+              <Link key={r.id} href={`/architectures/${architectureId}/regression/${r.id}`} className="flex items-center justify-between gap-3 py-3 hover:bg-surface-elevated/40 -mx-4 px-4 rounded">
                 <div className="flex items-center gap-3 min-w-0">
                   <StatusBadge status={r.status} />
                   <div className="min-w-0">
                     <div className="text-sm font-mono truncate">{r.id.slice(0, 10)}…</div>
-                    <div className="text-xs text-muted-foreground">{formatRelative(r.createdAt)}</div>
+                    <div className="text-xs text-mute">{formatRelative(r.createdAt)}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-4 text-xs">
-                  <span className="text-success">{r.passedSteps} passed</span>
-                  {r.failedSteps > 0 && <span className="text-destructive">{r.failedSteps} failed</span>}
+                  <span className="text-accent-green">{r.passedSteps} passed</span>
+                  {r.failedSteps > 0 && <span className="text-accent-red">{r.failedSteps} failed</span>}
                   <div className="hidden md:block w-24">
-                    <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                      <div className="h-full bg-success" style={{ width: `${passRate}%` }} />
+                    <div className="h-1.5 w-full rounded-full bg-surface-elevated overflow-hidden">
+                      <div className="h-full bg-accent-green" style={{ width: `${passRate}%` }} />
                     </div>
-                    <div className="text-[10px] text-muted-foreground text-right mt-0.5">{passRate}%</div>
+                    <div className="text-[10px] text-mute text-right mt-0.5">{passRate}%</div>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  <ChevronRight className="h-4 w-4 text-mute" />
                 </div>
               </Link>
             );

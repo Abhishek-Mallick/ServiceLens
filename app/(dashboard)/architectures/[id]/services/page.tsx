@@ -54,7 +54,7 @@ export default async function ServicesListPage({ params, searchParams }: { param
           const apis = parseJson<unknown[]>(s.exposesApis, []).length;
           return (
             <Link key={s.id} href={`/architectures/${architecture.id}/services/${s.id}`}>
-              <Card className="h-full transition-all hover:border-primary/40 hover:shadow-md">
+              <Card className="h-full transition-all hover:border-primary/40 ">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <div className="flex items-center gap-2 min-w-0">
@@ -63,20 +63,20 @@ export default async function ServicesListPage({ params, searchParams }: { param
                       </div>
                       <div className="min-w-0">
                         <div className="text-sm font-semibold truncate">{s.name}</div>
-                        <div className="text-xs text-muted-foreground truncate">{s.framework ?? s.language ?? '—'}</div>
+                        <div className="text-xs text-mute truncate">{s.framework ?? s.language ?? '—'}</div>
                       </div>
                     </div>
                     <StatusBadge status={s.healthStatus} />
                   </div>
-                  {s.summary && <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{s.summary}</p>}
-                  <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+                  {s.summary && <p className="text-xs text-mute line-clamp-2 mb-3">{s.summary}</p>}
+                  <div className="flex items-center gap-3 text-[11px] text-mute">
                     <span>{apis} APIs</span>
                     <span>·</span>
                     <span>{produces} emits</span>
                     <span>·</span>
                     <span>{consumes} subs</span>
                   </div>
-                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-2 truncate">
+                  <div className="flex items-center gap-1 text-[10px] text-mute mt-2 truncate">
                     <GitBranch className="h-3 w-3" /> <span className="truncate">{s.repoUrl}</span>
                   </div>
                 </CardContent>

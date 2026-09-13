@@ -37,10 +37,3 @@ export function formatRelative(date: Date | string | null | undefined): string {
   const days = Math.floor(hr / 24);
   return `${days}d ago`;
 }
-
-export const HEALTH_COLORS: Record<string, string> = {
-  healthy: 'hsl(152 60% 45%)',
-  degraded: 'hsl(38 92% 50%)',
-  down: 'hsl(352 80% 55%)',
-  unknown: 'hsl(215 16% 55%)',
-};

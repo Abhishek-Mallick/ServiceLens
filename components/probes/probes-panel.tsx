@@ -30,7 +30,7 @@ export interface ProbeRow {
   lastRunAt: string | null;
 }
 
-export function ProbesPanel({ serviceId, initialProbes }: { serviceId: string; initialProbes: ProbeRow[] }) {
+export function ProbesPanel({ serviceId, initialProbes, canEdit }: { serviceId: string; initialProbes: ProbeRow[]; canEdit: boolean }) {
   const router = useRouter();
   const [probes, setProbes] = useState<ProbeRow[]>(initialProbes);
   const [open, setOpen] = useState(false);
@@ -90,7 +90,7 @@ export function ProbesPanel({ serviceId, initialProbes }: { serviceId: string; i
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-2">
         <CardTitle className="text-base">Probes</CardTitle>
-        <Dialog open={open} onOpenChange={setOpen}>
+        {canEdit && <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button size="sm" variant="outline"><Plus className="h-3.5 w-3.5" />Add probe</Button>
           </DialogTrigger>
@@ -105,7 +105,7 @@ export function ProbesPanel({ serviceId, initialProbes }: { serviceId: string; i
                 <div className="space-y-1.5">
                   <Label htmlFor="p-type">Type</Label>
                   <select id="p-type" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}
-                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
+                    className="h-9 w-full rounded-md border border-hairline-strong bg-canvas px-3 text-sm">
                     <option value="http">HTTP</option>
                     <option value="tcp">TCP</option>
                     <option value="postgres">PostgreSQL</option>
@@ -119,7 +119,7 @@ export function ProbesPanel({ serviceId, initialProbes }: { serviceId: string; i
                 </div>
               </div>
               {(form.type === 'postgres' || form.type === 'redis') && (
-                <p className="text-[12px] text-muted-foreground -mt-1">
+                <p className="text-[12px] text-mute -mt-1">
                   The connection string is stored encrypted and only a redacted copy is shown. Use a read-only user; the check runs <code>{form.type === 'postgres' ? 'SELECT 1' : 'PING'}</code>.
                 </p>
               )}
@@ -145,29 +145,33 @@ export function ProbesPanel({ serviceId, initialProbes }: { serviceId: string; i
               </DialogFooter>
             </form>
           </DialogContent>
-        </Dialog>
+        </Dialog>}
       </CardHeader>
       <CardContent className="pt-0 space-y-2">
         {probes.length === 0 && (
-          <div className="text-xs text-muted-foreground">No probes yet. Set a deployed URL in the service settings for an automatic health check, or add HTTP, TCP, Postgres or Redis probes here.</div>
+          <div className="text-xs text-mute">No probes yet. Set a deployed URL in the service settings for an automatic health check, or add HTTP, TCP, Postgres or Redis probes here.</div>
         )}
         {probes.map((p) => (
-          <div key={p.id} className="flex items-center justify-between gap-3 rounded-md border border-border/60 p-2.5">
+          <div key={p.id} className="flex items-center justify-between gap-3 rounded-md border border-hairline p-2.5">
             <div className="min-w-0">
               <div className="text-sm font-medium truncate">{p.name}</div>
-              <div className="text-[11px] text-muted-foreground truncate font-mono">
+              <div className="text-[11px] text-mute truncate font-mono">
                 {p.type === 'heartbeat' ? `HEARTBEAT · push, expected every ${p.intervalSec}s` : `${p.type.toUpperCase()} ${p.target}`}{p.expectStatus ? ` → ${p.expectStatus}` : ''} · every {p.intervalSec}s
               </div>
-              <div className="text-[10px] text-muted-foreground mt-0.5">Last run: {formatRelative(p.lastRunAt)}</div>
+              <div className="text-[10px] text-mute mt-0.5">Last run: {formatRelative(p.lastRunAt)}</div>
             </div>
             <div className="flex items-center gap-1">
               {!p.enabled && <Badge variant="outline" className="text-[10px]">disabled</Badge>}
-              <Button size="icon" variant="ghost" onClick={() => runNow(p.id)} disabled={busy === p.id} title="Run now">
-                {busy === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PlayCircle className="h-3.5 w-3.5" />}
-              </Button>
-              <Button size="icon" variant="ghost" onClick={() => remove(p.id)} disabled={busy === p.id} title="Delete">
-                <Trash2 className="h-3.5 w-3.5 text-destructive" />
-              </Button>
+              {canEdit && (
+                <>
+                  <Button size="icon" variant="ghost" onClick={() => runNow(p.id)} disabled={busy === p.id} title="Run now">
+                    {busy === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PlayCircle className="h-3.5 w-3.5" />}
+                  </Button>
+                  <Button size="icon" variant="ghost" onClick={() => remove(p.id)} disabled={busy === p.id} title="Delete">
+                    <Trash2 className="h-3.5 w-3.5 text-accent-red" />
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         ))}

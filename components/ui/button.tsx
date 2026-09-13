@@ -12,12 +12,12 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: 'bg-ink text-canvas hover:bg-ink/90 active:bg-ink/80',
-        destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
-        outline: 'bg-canvas text-ink border border-white/10 hover:border-white/25 hover:bg-white/[0.03]',
-        secondary: 'bg-surface-elevated text-ink border border-white/10 hover:bg-white/[0.04]',
-        ghost: 'text-ink hover:bg-white/[0.05]',
+        destructive: 'bg-accent-red text-primary-on hover:bg-accent-red/90',
+        outline: 'bg-canvas text-ink border border-hairline-strong hover:border-stone hover:bg-hairline',
+        secondary: 'bg-surface-elevated text-ink border border-hairline-strong hover:bg-hairline',
+        ghost: 'text-ink hover:bg-hairline',
         link: 'text-accent-blue underline-offset-4 hover:underline',
-        success: 'bg-success text-success-foreground hover:bg-success/90',
+        success: 'bg-accent-green text-primary-on hover:bg-accent-green/90',
       },
       size: {
         default: 'h-9 px-4 py-2',

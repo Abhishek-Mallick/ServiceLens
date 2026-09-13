@@ -1,17 +1,19 @@
 import * as React from 'react';
 import { Body, Container, Head, Heading, Hr, Html, Link, Preview, Section, Text } from '@react-email/components';
 import type { NotificationMessage } from '../types';
+import { colors, severityColor as sev } from '@/lib/design-tokens';
 
+// Email clients need inline values, so they come straight from the tokens.
 const palette = {
-  bg: '#0a0a0c',
-  card: '#101012',
-  ink: '#fcfdff',
-  muted: 'rgba(252,253,255,0.7)',
-  hairline: 'rgba(255,255,255,0.14)',
-  critical: '#ff2047',
-  warning: '#ff801f',
-  info: '#3b9eff',
-  success: '#11ff99',
+  bg: colors['surface-card'],
+  card: colors['surface-elevated'],
+  ink: colors.ink,
+  muted: colors.charcoal,
+  hairline: colors['hairline-strong'],
+  critical: sev.critical,
+  warning: sev.warning,
+  info: sev.info,
+  success: colors['accent-green'],
 } as const;
 
 function severityColor(sev: string) {
