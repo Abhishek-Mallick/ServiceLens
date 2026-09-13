@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { TopologyView } from '@/components/topology/topology-view';
+import { MeshGraph } from '@/components/workspace/mesh-graph';
 import type { TopologyGraph } from '@/lib/types';
 
 interface ServiceSummary {
@@ -9,17 +9,11 @@ interface ServiceSummary {
   name: string;
   framework: string | null;
   language: string | null;
-  summary: string | null;
   healthStatus: string;
-  producesEvents: unknown[];
-  consumesEvents: unknown[];
-  exposesApis: unknown[];
-  consumesApis: unknown[];
-  databases: unknown[];
 }
 
-// React Flow needs window/measurements — render only after mount to avoid
-// hydration drift on the dashboard.
+// Read-only preview of an architecture's mesh for the dashboard. React Flow
+// needs layout measurements, so it renders only after mount.
 export function TopologyPreview({
   architectureId,
   architectureName,
@@ -34,23 +28,17 @@ export function TopologyPreview({
   height?: number;
 }) {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => setMounted(true), []);
 
   return (
-    <div className="relative rounded-lg border border-white/[0.08] bg-surface-card overflow-hidden">
-      <div style={{ height }} className="relative">
-        {mounted ? (
-          <TopologyView architectureId={architectureId} graph={graph} services={services} />
-        ) : (
-          <div className="h-full" suppressHydrationWarning />
-        )}
+    <div className="relative overflow-hidden rounded-lg border border-hairline-strong bg-surface-card">
+      <div className="flex items-center justify-between border-b border-hairline px-4 py-2.5">
+        <div className="text-[13px] text-ink">{architectureName}</div>
+        <Link href={`/architectures/${architectureId}`} className="text-[12px] text-link hover:underline">Open workspace</Link>
       </div>
-      <Link
-        href={`/architectures/${architectureId}/topology`}
-        className="absolute right-3 top-3 z-20 rounded-full border border-white/[0.14] bg-canvas/80 backdrop-blur px-3 py-1 text-[11px] text-ink hover:bg-white/[0.04]"
-      >
-        Open {architectureName} →
-      </Link>
+      <div style={{ height }}>
+        {mounted && <MeshGraph graph={graph} services={services} />}
+      </div>
     </div>
   );
 }

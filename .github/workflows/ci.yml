@@ -1,0 +1,75 @@
+# Typecheck + unit tests on every push/PR; end-to-end tests against a real
+# Postgres with the seeded demo. Runs with no external services: no LLM,
+# email, Slack or GitHub App (those paths are covered by unit tests).
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Typecheck & unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm run typecheck
+      - run: npm test
+
+  e2e:
+    name: End-to-end (Playwright)
+    runs-on: ubuntu-latest
+    needs: checks
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: servicelens
+          POSTGRES_PASSWORD: servicelens
+          POSTGRES_DB: servicelens
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U servicelens"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://servicelens:servicelens@localhost:5432/servicelens
+      DIRECT_URL: postgresql://servicelens:servicelens@localhost:5432/servicelens
+      # CI-only values — not secrets. Playwright's webServer sets NEXTAUTH_URL /
+      # NEXT_PUBLIC_APP_URL to its own base URL (see playwright.config.ts).
+      NEXTAUTH_SECRET: ci-only-nextauth-secret-not-used-anywhere-else
+      SECRETS_ENCRYPTION_KEY: '0000000000000000000000000000000000000000000000000000000000000000'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx prisma db push
+      - run: npm run prisma:seed
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7

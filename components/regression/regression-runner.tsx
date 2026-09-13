@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatusBadge } from '@/components/shared/status-badge';
-import { TopologyView } from '@/components/topology/topology-view';
+import { MeshGraph } from '@/components/workspace/mesh-graph';
 import { Play, Loader2, ChevronRight } from 'lucide-react';
 import { formatRelative } from '@/lib/utils';
 import type { RegressionFlow, TopologyGraph } from '@/lib/types';
@@ -121,13 +121,7 @@ export function RegressionRunner({ architectureId, architectureName, graph, serv
           </CardHeader>
           <CardContent className="pt-0">
             <div className="h-[440px] rounded-md border border-border/60 overflow-hidden">
-              <TopologyView
-                architectureId={architectureId}
-                graph={graph}
-                services={services}
-                animatedEdges={activeEdges}
-                activeServiceIds={activeServices}
-              />
+              <MeshGraph graph={graph} services={services} highlightEdgeIds={activeEdges} pulseServiceIds={activeServices} />
             </div>
           </CardContent>
         </Card>

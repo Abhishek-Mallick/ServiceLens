@@ -1,7 +1,7 @@
 # ServiceLens — Status & Book of Work
 
 > Source of truth for what is **real**, what is **mocked**, and what is **left** to reach the product goal.
-> Last updated 2026-09-13 (Chunks 1–4 landed; see [Progress log](#5-progress-log)). Plan-level done/left view: [`implementation_plan.md` §A](./implementation_plan.md#a-progress-summary--done-vs-left). Update this file in the same PR that changes a line item.
+> Last updated 2026-09-13 (Chunks 1–5 landed; see [Progress log](#5-progress-log)). Plan-level done/left view: [`implementation_plan.md` §A](./implementation_plan.md#a-progress-summary--done-vs-left). Update this file in the same PR that changes a line item.
 
 **Product goal:** a company onboards its whole topology. Every microservice registers itself on ServiceLens, which then becomes the one place to monitor the health of every app and datastore. When something breaks, ServiceLens opens the incident, pages the right on-call, runs the RCA, and raises a fix PR on its own.
 
@@ -39,7 +39,8 @@ Legend: ✅ real & wired · 🟡 partial · 🔴 mocked or missing · `P0` block
 | Multi-user / RBAC | ✅ | Reads via `visibleTo()` (creator or member); every write checks editor/owner; enforced by `tests/authz-guard.test.ts`. Every new user gets read-only access to the demo |
 | Audit log | ✅ | Now also records service add/update/delete/analyze |
 | Programmatic onboarding (API keys / SKILL.md) | ✅ | Architecture API keys (hashed), `/api/v1` (upsert-by-name, list, delete, incidents, heartbeat), `/SKILL.md` served publicly |
-| Design system (`DESIGN.md`) | 🟡 | Fonts wired. No `lib/design-tokens.ts`, no token lint |
+| Architecture workspace | ✅ | The architecture home is the live topology: status/incident overlays, filters and search, a service drawer (uptime, p95, check history, probes, dependencies, logs, incident, on-call), an edge drawer (env var, code link, confirm/reject), and a rail (open incidents, on-call, activity) |
+| Design system (`DESIGN.md`) | 🟡 | `lib/design-tokens.ts` is the single source (parity test against DESIGN.md, Tailwind generated from it); workspace + graph are token-only (lint test). Older screens still use shadcn/HSL classes |
 
 ---
 
@@ -137,18 +138,19 @@ Order matters: each workstream feeds the next. Spec references point to `docs/su
 - [ ] `P2` Inngest/BullMQ queue; Microsoft SSO; OTel for ServiceLens itself
 
 ### 3.7 UI
-- [ ] `P1` Topology-first architecture page (live graph, right rail, node drawer with endpoints, deps, health, logs). Spec §8
+- [x] Topology-first architecture workspace (spec §8): one graph renderer (`components/workspace/mesh-graph.tsx`) for the workspace, dashboard preview and regression runner; the old `components/topology/*` stack was removed and `/topology` redirects
 - [ ] `P1` Dashboard empty state for users with no architectures; hide the "simulated" badge wherever the architecture isn't demo
-- [ ] `P2` `lib/design-tokens.ts` + token-only lint; Lighthouse a11y ≥ 95
+- [x] `lib/design-tokens.ts` + Tailwind generated from it + token-only lint for the workspace
+- [ ] `P1` Migrate the remaining screens to token-only classes; Lighthouse a11y ≥ 95
 
 ### 3.8 Quality & docs
-- [x] Unit: 25 files / 178 tests, incl. topology + overrides, default-rule timing, authz guard, SSRF guard, secrets crypto, datastore probes (fake Redis), contract planning, roster, recipients, fix-PR diffing
+- [x] Unit: 27 files / 188 tests (+ design tokens, workspace math/filters), incl. topology + overrides, default-rule timing, authz guard, SSRF guard, secrets crypto, datastore probes (fake Redis), contract planning, roster, recipients, fix-PR diffing
 - [x] E2E: fixed 3 pre-existing broken specs (selector drift, palette race); the lifecycle spec no longer depends on a live LLM (demo explains fix PRs need a real repo)
 - [x] E2E 9/9 green (2026-09-12). The suite caught a real bug: the fix-PR button stayed disabled after the RCA streamed in (stale server prop). Fixed. The palette spec now searches instead of relying on the 5-item recent list
 - [x] Docs: `LOCAL_SETUP.md` (scheduler, demo vs real), `deploy_vercel.md` (cron required, repo analysis), `.env.example` (`SCHEDULER*`, `GITHUB_TOKEN`)
 - [x] `docs/secrets.md`: production secrets checklist (sources, Vercel setup, schema push, required cron). `.env.example` now marks variables the code doesn't read yet (`SLACK_WEBHOOK_URL`, `GITHUB_APP_*`, `REDIS_URL`)
 - [ ] `P1` Tests for scheduler claiming and `analyzeArchitecture` against a test DB; E2E golden path with a toggleable stub service and MSW for OpenRouter/Resend/GitHub
-- [ ] `P1` CI workflow: `typecheck`, `test`, `test:e2e` on PRs
+- [x] CI workflow (`.github/workflows/ci.yml`): typecheck + unit on every push/PR; Playwright against a Postgres service with the seeded demo
 - [ ] `P1` Fix README / `architecture.md` drift (they still claim clone-based analysis, auto-RCA, GitHub draft PRs, enforced roles)
 
 ---
@@ -257,3 +259,33 @@ This must pass end to end with no manual DB edits and no simulated data:
 - The Regression tab on real architectures now runs contract tests instead of showing a placeholder.
 
 **Next chunk (recommended):** CI workflow + MSW-mocked golden-path E2E, then the topology-first architecture page with the Phase 5 design tokens (see implementation_plan.md §"Suggested order for what's left").
+
+### 2026-09-13 — Chunk 5: architecture workspace, design tokens, CI
+**Shipped:**
+- `lib/design-tokens.ts` with `tailwind.config.ts` generated from it
+- `lib/workspace.ts` (+ types and filters)
+- `app/api/architectures/[id]/workspace`, `app/api/services/[id]/overview`
+- `components/workspace/*`: mesh graph, workspace shell, service drawer, edge drawer, rail, health bars, status dot
+- The architecture home is now the workspace; `/topology` redirects
+- The dashboard preview and regression runner use the same graph; `components/topology/*` deleted
+- `.github/workflows/ci.yml`
+
+**Verified live** (scratch Postgres, stub service):
+- **Workspace API.** Acme returns 6 nodes and 2 edges with per-service uptime/p95/checks, 2 open incidents sorted by severity, on-call people (`Olivia Oncall → ecommerce-gateway`, `Acme SRE → 5 services`) and 30 activity items. The demo returns 27 nodes / 45 edges with on-call hidden. Unauthenticated → 401.
+- **Service overview.** `orders` has 60-check history, the probe's last status, a hand-added `ledger` edge, the open incident, on-call, and `canEdit`.
+- **UI (screenshots reviewed).**
+  - Workspace graph with status dots, incident pills and env-var edge labels.
+  - Service drawer: uptime 41.1%, p95 15 ms, check bars showing the outage window.
+  - Edge drawer: `PRODUCT_SERVICE_URL`, GitHub line link, "matched automatically", "This match is wrong".
+  - The demo shows the whole mesh.
+- **E2E.** 12 specs incl. 4 new workspace tests (home, drawer + Escape, search → drawer, `/topology` redirect). Unit 188/188, typecheck clean.
+
+**Found and fixed during verification:** opening at a clamped "readable" zoom cropped large meshes (the demo's API Gateway was off-canvas). The workspace now always opens on the whole mesh, and search/click zooms into a node.
+
+**Known:**
+- React Flow logs a dev-only warning #002 under StrictMode even though node/edge types are module constants.
+- The first E2E test after a cold `next dev` start occasionally lands on /login; CI retries twice.
+
+**Git:** the commit history rewrite to drop earlier `Co-Authored-By` trailers was blocked by the environment's permission guard. New commits carry no such trailer. See the hand-off in the chunk summary.
+
+**Next chunk (recommended):** migrate the remaining screens to token-only classes (Phase 5.2–5.3) + an MSW-mocked golden-path E2E on a real architecture; then metrics ingest (OTLP).

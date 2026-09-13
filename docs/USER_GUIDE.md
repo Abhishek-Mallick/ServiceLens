@@ -39,6 +39,23 @@ How to get the most out of ServiceLens, from first login to automatic fix PRs. F
 
 ---
 
+## 2b. The workspace (architecture home)
+
+Opening an architecture lands on its **workspace**:
+- **The live mesh.** Every service with a status dot, an *incident* pill when something is open, and edges labelled with the env var that links them. Dashed edges are unconfirmed matches.
+- **Toolbar.** Counts by status, filters (*All · Unhealthy · With incidents*) that fade the rest, and **Find a service** (Enter jumps to it).
+- **Click a service** for its drawer:
+  - uptime (24 h), p95 (1 h), the last 60 checks
+  - the open incident with the start of its RCA and any fix PR, and who's on call
+  - its health checks (run one now), what it calls and what calls it
+  - its endpoints, and warnings/errors from the last 24 h
+- **Click an edge** to see which env var and line of code created it and how it was matched. Editors can confirm the right service for an ambiguous match, or mark a match as wrong.
+- **The rail:** open incidents (by severity), who's on call for which services, and recent activity (incidents, fix PRs, analysis, dependency decisions, test runs, live health changes).
+
+Everything updates live. Press **Esc** to close a drawer.
+
+---
+
 ## 3. Teams and roles
 
 Invite people from the architecture's **Members** settings. They need a ServiceLens account first.

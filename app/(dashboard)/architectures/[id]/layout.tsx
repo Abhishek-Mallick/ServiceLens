@@ -75,9 +75,6 @@ export default async function ArchitectureLayout({
                   </Button>
                 </>
               )}
-              <Button asChild size="sm">
-                <Link href={`/architectures/${architecture.id}/topology`}>Open topology</Link>
-              </Button>
             </div>
           </div>
           <ArchitectureTabs architectureId={architecture.id} />

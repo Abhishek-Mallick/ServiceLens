@@ -2,7 +2,7 @@
 
 Turning the ServiceLens prototype into a fully functional **AI SRE + observability platform**: real onboarding of a company's whole topology, real monitoring, alerting, incidents, paging, AI root-cause analysis and fix PRs, and a UI driven by `DESIGN.md`.
 
-> **Status as of 2026-09-13:** the core platform is built and verified end to end. Phases 0–4 and 7 are essentially complete, and the product went beyond the original plan (see §A). The remaining big pieces are the **design-system revamp (Phase 5)**, **multi-instance realtime and queue (Phases 6–7)**, **metrics ingest**, and **CI/E2E hardening**. The living checklist, with bugs and a detailed progress log, is [`STATUS.md`](./STATUS.md). How to use everything is in [`USER_GUIDE.md`](./USER_GUIDE.md).
+> **Status as of 2026-09-13 (after chunk 5):** the core platform is built and verified end to end. Phases 0–4 and 7 are essentially complete, and the product went beyond the original plan (see §A). The remaining big pieces are the **design-system revamp (Phase 5)**, **multi-instance realtime and queue (Phases 6–7)**, **metrics ingest**, and **CI/E2E hardening**. The living checklist, with bugs and a detailed progress log, is [`STATUS.md`](./STATUS.md). How to use everything is in [`USER_GUIDE.md`](./USER_GUIDE.md).
 
 Legend: `[x]` done · `[~]` partly done (what's missing is noted) · `[ ]` not started. Effort: **S** (≤1 day), **M** (2–4 days), **L** (5–10 days).
 
@@ -22,15 +22,16 @@ Legend: `[x]` done · `[~]` partly done (what's missing is noted) · `[ ]` not s
 | **AI SRE** | RCA generated automatically on open; **fix PRs from real source** (pinned SHA, server-computed diff, draft PR through the GitHub App, conflict check, 1 PR/repo/hour, never merges, optional auto mode); never faked when the LLM is unavailable | `lib/rca.ts`, `lib/fix-pr.ts`, `lib/remediation.ts`, `lib/github/app.ts` |
 | **Platform** | Durable job queue with immediate in-process runs; multi-user roles enforced on every route (static guard test); audit log; **credentials encrypted at rest** (AES-256-GCM: datastore strings, probe headers, Slack webhooks); API-key rate limits | `lib/jobs.ts`, `lib/access.ts`, `lib/secrets.ts` |
 | **Demo** | Seeded e-commerce mesh flagged `demo`, shared read-only with every user; the only place simulated data may exist | `Architecture.demo`, `lib/demo.ts` |
-| **Quality & docs** | 178 unit tests, 9 Playwright specs; `USER_GUIDE.md`, `secrets.md`, `STATUS.md`, `SKILL.md` | `tests/**`, `docs/**` |
+| **Workspace** | Architecture home = live topology with status/incident overlays, filters, search, service and edge drawers, incidents / on-call / activity rail; one graph renderer for workspace, dashboard and regression | `components/workspace/*`, `lib/workspace.ts` |
+| **Design tokens** | `lib/design-tokens.ts` is the single source; Tailwind generated from it; parity test vs DESIGN.md; token-only lint for the workspace | `lib/design-tokens.ts`, `tests/design-tokens.test.ts` |
+| **Quality & docs** | 188 unit tests, 12 Playwright specs, **CI** (typecheck + unit + E2E on Postgres); `USER_GUIDE.md`, `secrets.md`, `STATUS.md`, `SKILL.md` | `tests/**`, `.github/workflows/ci.yml`, `docs/**` |
 
 ### Left
 | Priority | Item | Notes |
 |---|---|---|
-| P1 | **Design-system revamp** (Phase 5.1–5.3): `lib/design-tokens.ts`, token-only components, surface refresh, WCAG pass | The largest remaining chunk |
-| P1 | **Topology-first architecture page** (graph as hero, incidents/on-call rail, node drawer) | Real-mesh spec §8 |
+| P1 | **Token-only migration of the remaining screens** (Phase 5.2–5.3) + WCAG pass | Tokens and the workspace are done; older screens still use shadcn/HSL classes |
 | P1 | **Metrics ingest** (OTLP / Prometheus remote-write) and rules on metrics | Probes + logs are the only signals today |
-| P1 | **CI workflow** (typecheck, unit, E2E on PRs) + **MSW-mocked E2E golden path** | Phase 8 |
+| P1 | **MSW-mocked golden-path E2E** on a real architecture (outage → page → RCA → fix PR) | CI itself is done |
 | P1 | Multi-instance **realtime** (Redis pub/sub) and **queue** (BullMQ/Inngest) | Single-instance SSE bus today |
 | P1 | More extractors: NestJS, Fastify, Spring, FastAPI/Flask, Go; Kafka/DB detection from config | Express/Next.js only today |
 | P1 | Organization/workspace layer; invite by email for people without accounts | Architecture is the top-level scope today |
@@ -136,14 +137,16 @@ Legend: `[x]` done · `[~]` partly done (what's missing is noted) · `[ ]` not s
 ## Phase 5 — UI revamp using `DESIGN.md` (L) — 🟡 partly done
 
 ### 5.1 Tokens + foundation
-- [~] Dark editorial palette and fonts wired (Fraunces as the Domaine Display stand-in, Inter, JetBrains Mono). *Missing: `lib/design-tokens.ts` and the Tailwind config generated from it.*
+- [x] `lib/design-tokens.ts` holds every DESIGN.md color, radius and spacing token (parity-tested); `tailwind.config.ts` is generated from it; status/severity/edge color mappings live there too.
+- [x] Fonts wired (Fraunces as the Domaine Display stand-in, Inter, JetBrains Mono).
 - [ ] No-box-shadow elevation language enforced.
 
 ### 5.2 Component layer
 - [ ] Token-only rewrite of `components/ui/*`; `code-window`, `status-dot`, `atmospheric-glow`.
 
 ### 5.3 Surface refresh
-- [~] Auth pages, dashboard and cards use the dark editorial style. *Missing: topology as the dashboard hero, full-route service detail tabs, editorial incident layout.*
+- [x] **Topology as the hero:** the architecture home is the live workspace (graph + drawers + incidents/on-call/activity rail), token-only.
+- [~] Other surfaces use the dark editorial style but still shadcn/HSL classes. *Missing: token-only migration, editorial incident layout.*
 - [x] Empty and loading states for the new flows (onboarding wizard, analysis, contract tests, dependency review).
 
 ### 5.4 Architecture builder
@@ -172,11 +175,11 @@ Legend: `[x]` done · `[~]` partly done (what's missing is noted) · `[ ]` not s
 
 ## Phase 8 — Testing & docs — 🟡 mostly done
 
-- [x] **Vitest:** 178 tests (rules timing, topology + overrides, SSRF guard, secrets, datastore probes, contract tests, notify recipients, roster, fix-PR diffing, API keys, authz guard…).
-- [~] **Playwright:** 9 specs (login, architectures, topology, chaos, palette, incident lifecycle). *Missing: a golden path on a real architecture with MSW-mocked OpenRouter/Resend/GitHub.*
+- [x] **Vitest:** 188 tests (rules timing, topology + overrides, SSRF guard, secrets, datastore probes, contract tests, notify recipients, roster, fix-PR diffing, API keys, authz guard…).
+- [~] **Playwright:** 12 specs (login, architectures, workspace, chaos, palette, incident lifecycle). *Missing: a golden path on a real architecture with MSW-mocked OpenRouter/Resend/GitHub.*
 - [ ] **MSW** mocks. *(Verification runs use local fake GitHub/LLM servers instead — see STATUS.)*
 - [x] Docs: README, `USER_GUIDE.md`, `secrets.md`, `LOCAL_SETUP.md`, `deploy_vercel.md`, `STATUS.md`, `SKILL.md`.
-- [ ] CI workflow running typecheck + tests on PRs.
+- [x] CI workflow: typecheck + unit on every push/PR; Playwright against Postgres with the seeded demo.
 
 ---
 
@@ -200,8 +203,7 @@ JSON-shaped fields stay `String` decoded with `parseJson<T>()`. Credentials are 
 
 ## Suggested order for what's left
 
-1. **CI + MSW golden-path E2E** (S–M): protects everything already built.
-2. **Topology-first architecture page + Phase 5 tokens/components** (L): the visible product leap.
+1. **Token-only migration of the remaining screens** (Phase 5.2–5.3) + **MSW golden-path E2E** (L).
 3. **Metrics ingest (OTLP)** and rules on metrics (L).
 4. **Extractors for more stacks** (M): widens who can onboard.
 5. **Org layer + invite by email** (M), then **Redis realtime/queue** (M) when running more than one instance.
@@ -216,5 +218,5 @@ JSON-shaped fields stay `String` decoded with `parseJson<T>()`. Credentials are 
 - [x] Configure an on-call sheet; a real outage opens an incident, pages on-call by email/Slack, escalates, and can be acked from email.
 - [x] Open the incident to a ready AI RCA; open a draft fix PR generated from the real source (with the GitHub App installed).
 - [x] Contract tests catch deploy drift after every deploy (CI gate).
-- [ ] Every screen uses only `DESIGN.md` tokens (Phase 5).
-- [~] Test suite green (unit + E2E ✅); CI and an MSW-mocked golden-path E2E still to do.
+- [~] Every screen uses only `DESIGN.md` tokens: the workspace and graph are token-only (lint-enforced); the remaining screens are pending.
+- [~] Test suite green and running in CI ✅; an MSW-mocked golden-path E2E is still to do.
