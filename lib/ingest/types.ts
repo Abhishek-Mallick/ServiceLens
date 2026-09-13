@@ -24,4 +24,5 @@ export interface ServiceContract {
   envVars: EnvVar[];
   framework: 'express' | 'nextjs-app' | 'nextjs-pages' | 'fastify' | 'unknown';
   commitSha?: string;
+  branch?: string; // branch actually read (may differ if the configured one didn't exist)
 }

@@ -8,23 +8,44 @@ import { StatusBadge } from '@/components/shared/status-badge';
 import { AddServiceButton } from '@/components/architecture/add-service-button';
 import { parseJson } from '@/lib/utils';
 import { GitBranch, Server } from 'lucide-react';
+import { visibleTo } from '@/lib/access';
+import { atLeast, getRole } from '@/lib/membership';
+import { ApiKeysPanel } from '@/components/architecture/api-keys-panel';
+import { DependencyReview } from '@/components/architecture/dependency-review';
+import { GithubPanel } from '@/components/architecture/github-panel';
+import { loadDependencyReview } from '@/lib/topology/insights';
+import { githubAppConfigured, installUrl, repoCoverage } from '@/lib/github/app';
 
 export const dynamic = 'force-dynamic';
 
-export default async function ServicesListPage({ params }: { params: { id: string } }) {
+export default async function ServicesListPage({ params, searchParams }: { params: { id: string }; searchParams?: { github?: string } }) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return null;
   const architecture = await prisma.architecture.findFirst({
-    where: { id: params.id, userId: session.user.id },
+    where: { id: params.id, ...visibleTo(session.user.id) },
     include: { services: { orderBy: { createdAt: 'asc' } } },
   });
   if (!architecture) notFound();
+  const role = await getRole(architecture.id, session.user.id);
+  const canEdit = atLeast(role, 'editor');
+  const canOwn = atLeast(role, 'owner') && !architecture.demo;
+  const apiKeys = canOwn
+    ? await prisma.apiKey.findMany({
+        where: { architectureId: architecture.id },
+        select: { id: true, name: true, prefix: true, createdAt: true, lastUsedAt: true, revokedAt: true },
+        orderBy: { createdAt: 'desc' },
+      })
+    : [];
+  const review = architecture.demo ? null : await loadDependencyReview(architecture.id);
+  const showGithub = !architecture.demo && canEdit;
+  const coverage = showGithub ? await repoCoverage(architecture.services.map((s) => s.repoUrl)) : [];
+  const ghInstallUrl = showGithub && githubAppConfigured() ? (await installUrl(architecture.id)) ?? null : null;
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">Services ({architecture.services.length})</h2>
-        <AddServiceButton architectureId={architecture.id} />
+        {canEdit && <AddServiceButton architectureId={architecture.id} />}
       </div>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {architecture.services.map((s) => {
@@ -64,6 +85,34 @@ export default async function ServicesListPage({ params }: { params: { id: strin
           );
         })}
       </div>
+      {review && (
+        <DependencyReview
+          architectureId={architecture.id}
+          canEdit={canEdit}
+          services={architecture.services.map((s) => ({ id: s.id, name: s.name }))}
+          initial={review}
+        />
+      )}
+      {showGithub && (
+        <GithubPanel
+          configured={githubAppConfigured()}
+          installUrl={ghInstallUrl}
+          justChanged={searchParams?.github ?? null}
+          repos={coverage.map((c) => ({ ...c, services: architecture.services.filter((s) => s.repoUrl === c.repoUrl).map((s) => s.name) }))}
+        />
+      )}
+      {canOwn && (
+        <ApiKeysPanel
+          architectureId={architecture.id}
+          appUrl={process.env.NEXT_PUBLIC_APP_URL ?? ''}
+          initialKeys={apiKeys.map((k) => ({
+            ...k,
+            createdAt: k.createdAt.toISOString(),
+            lastUsedAt: k.lastUsedAt?.toISOString() ?? null,
+            revokedAt: k.revokedAt?.toISOString() ?? null,
+          }))}
+        />
+      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { requireSession } from '@/lib/auth-helpers';
+import { requireRole } from '@/lib/membership';
 
 const Patch = z.object({
   enabled: z.boolean().optional(),
@@ -10,7 +11,9 @@ const Patch = z.object({
 });
 
 async function loadOwned(id: string, userId: string) {
-  return prisma.chaosSchedule.findFirst({ where: { id, architecture: { userId } } });
+  const sched = await prisma.chaosSchedule.findUnique({ where: { id } });
+  if (!sched) return null;
+  return (await requireRole(sched.architectureId, userId, 'editor')) ? sched : null;
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {

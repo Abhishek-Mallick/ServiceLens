@@ -61,19 +61,25 @@ export function HealthDashboard({ architectureId, initialServices }: { architect
     return counts;
   }, [services]);
 
+  // Probes run server-side on their own schedule; the page only reads. SSE
+  // patches cards live; this slow re-read is a fallback if the stream drops.
   useEffect(() => {
     const interval = setInterval(() => {
       refresh(false);
-    }, 30_000);
+    }, 60_000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [architectureId]);
 
-  async function refresh(userTriggered: boolean) {
+  // `probeNow` runs every probe immediately (explicit user action only).
+  async function refresh(probeNow: boolean) {
+    const userTriggered = probeNow;
     if (userTriggered) setRefreshing(true);
     try {
-      const probeRes = await fetch(`/api/architectures/${architectureId}/health`, { method: 'POST' });
-      if (!probeRes.ok) throw new Error('probe failed');
+      if (probeNow) {
+        const probeRes = await fetch(`/api/architectures/${architectureId}/health`, { method: 'POST' });
+        if (!probeRes.ok) throw new Error('probe failed');
+      }
       const dataRes = await fetch(`/api/architectures/${architectureId}/health`);
       const data = await dataRes.json();
       const updated: ServiceHealthData[] = data.architecture.services.map((s: {
@@ -98,7 +104,7 @@ export function HealthDashboard({ architectureId, initialServices }: { architect
         history: (s.healthHistory ?? []).slice().reverse(),
       }));
       setServices(updated);
-      if (userTriggered) toast.success('Health refreshed');
+      if (userTriggered) toast.success('Probes ran');
     } catch {
       if (userTriggered) toast.error('Refresh failed');
     } finally {
@@ -124,7 +130,7 @@ export function HealthDashboard({ architectureId, initialServices }: { architect
               {totals.down > 0 && <span className="ml-2 text-destructive">· {totals.down} down</span>}
             </div>
             <div className="text-xs text-muted-foreground flex items-center gap-2">
-              Last checked: {latestCheck ? formatRelative(new Date(latestCheck)) : 'never'} · polling every 30s
+              Last checked: {latestCheck ? formatRelative(new Date(latestCheck)) : 'never'} · checked server-side every minute
               {live && (
                 <span className="inline-flex items-center gap-1 text-accent-green">
                   <Radio className="h-3 w-3 animate-pulse" /> live
@@ -135,7 +141,7 @@ export function HealthDashboard({ architectureId, initialServices }: { architect
         </div>
         <Button variant="outline" size="sm" onClick={() => refresh(true)} disabled={refreshing}>
           <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-          Refresh
+          Probe now
         </Button>
       </div>
 

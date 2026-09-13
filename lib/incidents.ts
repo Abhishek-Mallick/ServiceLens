@@ -4,6 +4,8 @@ import { dispatch, parseChannels } from './notify';
 import type { Severity } from './notify';
 import { snapshotForIncident } from './logs';
 import { publish } from './realtime';
+import { assertDemoArchitecture } from './demo';
+import { kick } from './jobs';
 
 export interface OpenIncidentInput {
   architectureId: string;
@@ -31,6 +33,33 @@ export async function openIncident(input: OpenIncidentInput): Promise<{ id: stri
     select: { id: true },
   });
   if (existing) return { id: existing.id, created: false };
+
+  // One outage, one incident: if another rule already has an open incident for
+  // this service, attach this alert to it (and raise severity if needed)
+  // instead of opening a second incident and paging twice.
+  if (input.serviceId && (input.source ?? 'rule') === 'rule') {
+    const open = await prisma.incident.findFirst({
+      where: { architectureId: input.architectureId, serviceId: input.serviceId, status: { in: ['open', 'acknowledged', 'mitigated'] } },
+      orderBy: { openedAt: 'desc' },
+      select: { id: true, severity: true, events: { where: { type: 'related_alert' }, select: { payload: true } } },
+    });
+    if (open) {
+      const already = input.ruleId && open.events.some((e) => e.payload?.includes(`"ruleId":"${input.ruleId}"`));
+      if (!already) {
+        const rank = { info: 0, warning: 1, critical: 2 } as const;
+        const raise = rank[input.severity] > rank[open.severity as keyof typeof rank];
+        await prisma.incidentEvent.create({
+          data: { incidentId: open.id, type: 'related_alert', payload: stringify({ ruleId: input.ruleId ?? null, title: input.title, severity: input.severity, summary: input.summary ?? null }) },
+        });
+        if (raise) {
+          await prisma.incident.update({ where: { id: open.id }, data: { severity: input.severity } });
+          await prisma.incidentEvent.create({ data: { incidentId: open.id, type: 'severity_raised', payload: stringify({ from: open.severity, to: input.severity }) } });
+        }
+        publish(input.architectureId, 'incident_updated', { incidentId: open.id, relatedAlert: input.title });
+      }
+      return { id: open.id, created: false };
+    }
+  }
 
   const incident = await prisma.incident.create({
     data: {
@@ -75,28 +104,43 @@ export async function openIncident(input: OpenIncidentInput): Promise<{ id: stri
     simulated: incident.simulated,
   });
 
-  // Notify (fire-and-forget — we don't want a flaky webhook to break the probe loop).
-  void notifyForIncident(incident.id, 'IncidentOpened').catch((err) =>
-    console.error('[incidents] dispatch IncidentOpened failed:', err)
-  );
+  // On-call assignment, notifications, escalation and RCA run as a durable job
+  // so a flaky webhook or LLM never blocks the probe loop and nothing is lost
+  // if this process dies.
+  await kick('incident_opened', { incidentId: incident.id });
   return { id: incident.id, created: true };
 }
 
-async function notifyForIncident(incidentId: string, template: 'IncidentOpened' | 'IncidentAcknowledged' | 'IncidentResolved') {
+export type IncidentTemplate = 'IncidentOpened' | 'IncidentAcknowledged' | 'IncidentResolved' | 'IncidentEscalated' | 'FixPRReady';
+
+export async function notifyForIncident(incidentId: string, template: IncidentTemplate) {
   const inc = await prisma.incident.findUnique({
     where: { id: incidentId },
-    include: { rule: true, service: { select: { name: true } } },
+    include: {
+      rule: true,
+      service: { select: { name: true } },
+      oncall: true,
+      remediations: { where: { status: 'opened' }, orderBy: { createdAt: 'desc' }, take: 1 },
+    },
   });
   if (!inc) return;
+  const pr = inc.remediations[0];
   const channels = parseChannels(inc.rule?.channels);
   const title =
     template === 'IncidentOpened' ? `[${inc.severity.toUpperCase()}] ${inc.title}` :
+    template === 'IncidentEscalated' ? `[ESCALATED] ${inc.title}` :
+    template === 'FixPRReady' ? `Fix PR opened: ${inc.title}` :
     template === 'IncidentAcknowledged' ? `Acknowledged: ${inc.title}` :
     `Resolved: ${inc.title}`;
+  const openedMin = Math.max(1, Math.round((Date.now() - inc.openedAt.getTime()) / 60_000));
   const body =
-    template === 'IncidentResolved' && inc.resolution
+    template === 'FixPRReady' && pr
+      ? `${pr.draft ? 'Draft pull request' : 'Pull request'} ${pr.repoFullName}#${pr.prNumber}: ${pr.title ?? ''} — ${pr.prUrl}. Review before merging; ServiceLens never merges.`
+      : template === 'IncidentResolved' && inc.resolution
       ? `Resolution: ${inc.resolution}`
-      : inc.summary ?? '';
+      : template === 'IncidentEscalated'
+        ? `Still unacknowledged after ${openedMin} min.${inc.oncall ? ` ${inc.oncall.name} (${inc.oncall.email}) was paged first.` : ''} ${inc.summary ?? ''}`.trim()
+        : inc.summary ?? '';
   await dispatch({
     architectureId: inc.architectureId,
     incidentId: inc.id,
@@ -109,20 +153,18 @@ async function notifyForIncident(incidentId: string, template: 'IncidentOpened' 
   });
 }
 
-export async function ackIncident(incidentId: string, byUserId: string | null): Promise<void> {
+export async function ackIncident(incidentId: string, byUserId: string | null, byEmail?: string | null): Promise<void> {
   const updated = await prisma.incident.updateMany({
     where: { id: incidentId, status: { in: ['open'] } },
     data: { status: 'acknowledged', ackedAt: new Date(), assigneeId: byUserId ?? undefined },
   });
   if (updated.count === 0) return;
   await prisma.incidentEvent.create({
-    data: { incidentId, type: 'acked', byUserId, payload: null },
+    data: { incidentId, type: 'acked', byUserId, payload: byEmail ? stringify({ via: 'magic-link', email: byEmail }) : null },
   });
   const inc = await prisma.incident.findUnique({ where: { id: incidentId }, select: { architectureId: true } });
   if (inc) publish(inc.architectureId, 'incident_updated', { incidentId, status: 'acknowledged' });
-  void notifyForIncident(incidentId, 'IncidentAcknowledged').catch((err) =>
-    console.error('[incidents] dispatch IncidentAcknowledged failed:', err)
-  );
+  await kick('notify', { incidentId, template: 'IncidentAcknowledged' });
 }
 
 export async function resolveIncident(incidentId: string, byUserId: string | null, resolution?: string): Promise<void> {
@@ -136,24 +178,26 @@ export async function resolveIncident(incidentId: string, byUserId: string | nul
   });
   const inc = await prisma.incident.findUnique({ where: { id: incidentId }, select: { architectureId: true } });
   if (inc) publish(inc.architectureId, 'incident_resolved', { incidentId });
-  void notifyForIncident(incidentId, 'IncidentResolved').catch((err) =>
-    console.error('[incidents] dispatch IncidentResolved failed:', err)
-  );
+  await kick('notify', { incidentId, template: 'IncidentResolved' });
 }
 
 export async function resolveIncidentForRule(ruleId: string, serviceId: string | null, reason: 'auto' | 'manual'): Promise<void> {
   const open = await prisma.incident.findMany({
     where: { ruleId, serviceId, status: { in: ['open', 'acknowledged', 'mitigated'] } },
-    select: { id: true },
+    select: { id: true, architectureId: true },
   });
   for (const i of open) {
-    await prisma.incident.update({
-      where: { id: i.id },
+    const updated = await prisma.incident.updateMany({
+      where: { id: i.id, status: { not: 'resolved' } },
+      // No `resolution` text: that field feeds runbook memory and should only hold human notes.
       data: { status: 'resolved', resolvedAt: new Date() },
     });
+    if (updated.count === 0) continue;
     await prisma.incidentEvent.create({
       data: { incidentId: i.id, type: 'resolved', payload: stringify({ reason }) },
     });
+    publish(i.architectureId, 'incident_resolved', { incidentId: i.id, reason });
+    await kick('notify', { incidentId: i.id, template: 'IncidentResolved' });
   }
 }
 
@@ -180,6 +224,7 @@ export async function triggerSyntheticIncident(input: {
   durationSec?: number;
   byUserId: string | null;
 }): Promise<{ id: string }> {
+  await assertDemoArchitecture(input.architectureId, 'Synthetic incidents');
   const svc = await prisma.service.findUnique({ where: { id: input.serviceId }, select: { name: true } });
   const opened = await openIncident({
     architectureId: input.architectureId,

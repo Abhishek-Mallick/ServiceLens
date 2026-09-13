@@ -27,9 +27,11 @@ export async function saveContract(serviceId: string, contract: ServiceContract)
     where: { id: serviceId },
     data: {
       framework: contract.framework === 'unknown' ? null : contract.framework,
-      exposesApis: stringify(contract.endpoints.map((e) => `${e.method} ${e.path}`)),
-      consumesApis: stringify(contract.outboundDeps.map((d) => d.envVar)),
+      // Same {method, path, description} shape the UI panels already render.
+      // consumesApis is written by deriveContractTopology once targets are resolved.
+      exposesApis: stringify(contract.endpoints.map((e) => ({ method: e.method, path: e.path, description: `${e.file}:${e.line}` }))),
       analysisStatus: 'completed',
+      analysisResult: null,
     },
   });
 }

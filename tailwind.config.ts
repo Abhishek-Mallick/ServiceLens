@@ -1,4 +1,5 @@
 import type { Config } from 'tailwindcss';
+import { rounded, tailwindColors } from './lib/design-tokens';
 
 const config: Config = {
   darkMode: ['class'],
@@ -20,18 +21,9 @@ const config: Config = {
         mono: ['var(--font-mono)', 'JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
       },
       colors: {
-        // Resend surface layers
-        canvas: 'hsl(var(--background))',
-        'surface-card': 'hsl(var(--surface-card))',
-        'surface-elevated': 'hsl(var(--surface-elevated))',
-        'surface-deep': 'hsl(var(--surface-deep))',
-        ink: 'hsl(var(--foreground))',
-        // Resend accent palette (atmospheric only — never solid surfaces)
-        'accent-orange': '#ff801f',
-        'accent-yellow': '#ffc53d',
-        'accent-blue':   '#3b9eff',
-        'accent-green':  '#11ff99',
-        'accent-red':    '#ff2047',
+        // DESIGN.md palette + status-*/severity-* aliases, generated from lib/design-tokens.ts.
+        ...tailwindColors(),
+        // shadcn semantic colors (CSS variables in app/globals.css).
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
@@ -74,16 +66,8 @@ const config: Config = {
           foreground: 'hsl(var(--warning-foreground))',
         },
       },
-      borderRadius: {
-        // DESIGN.md scale: xs 4 · sm 6 · md 8 · lg 12 (radius) · xl 16 · full
-        none: '0',
-        xs: '4px',
-        sm: '6px',
-        md: '8px',
-        lg: 'var(--radius)',
-        xl: '16px',
-        full: '9999px',
-      },
+      // DESIGN.md radius scale (lg = 12px, the container radius).
+      borderRadius: { ...rounded },
       keyframes: {
         'accordion-down': {
           from: { height: '0' },

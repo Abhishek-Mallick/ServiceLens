@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
+import { demoOnlyResponse } from '@/lib/demo';
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
 import { authOptions } from '@/lib/auth';
 import { executeRegressionRun, listFlowsForArchitecture } from '@/lib/regression-engine';
+import { visibleTo } from '@/lib/access';
+import { requireOwnedArchitecture } from '@/lib/auth-helpers';
 
 export const maxDuration = 300;
 
@@ -11,7 +14,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const architecture = await prisma.architecture.findFirst({
-    where: { id: params.id, userId: session.user.id },
+    where: { id: params.id, ...visibleTo(session.user.id) },
   });
   if (!architecture) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
@@ -30,10 +33,9 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const architecture = await prisma.architecture.findFirst({
-    where: { id: params.id, userId: session.user.id },
-  });
+  const architecture = await requireOwnedArchitecture(params.id, session.user.id, 'editor');
   if (!architecture) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (!architecture.demo) return demoOnlyResponse('Regression runs');
 
   const runId = await executeRegressionRun(params.id, {
     triggeredBy: session.user.email ?? 'manual',

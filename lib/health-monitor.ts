@@ -15,32 +15,6 @@ interface ServiceLike {
   healthEndpoint: string | null;
 }
 
-export async function checkService(service: ServiceLike): Promise<HealthCheckResult> {
-  if (service.healthEndpoint && /^https?:\/\//.test(service.healthEndpoint)) {
-    const start = Date.now();
-    try {
-      const res = await fetch(service.healthEndpoint, {
-        signal: AbortSignal.timeout(5000),
-      });
-      const responseTime = Date.now() - start;
-      return {
-        status: res.ok ? 'healthy' : res.status >= 500 ? 'down' : 'degraded',
-        responseTime,
-        details: { statusCode: res.status, live: true },
-        simulated: false,
-      };
-    } catch (err) {
-      return {
-        status: 'down',
-        responseTime: null,
-        details: { error: err instanceof Error ? err.message : 'Connection failed', live: true },
-        simulated: false,
-      };
-    }
-  }
-  return simulateHealth(service);
-}
-
 export function simulateHealth(service: ServiceLike): HealthCheckResult {
   // Seed by name so each service has a stable baseline but some variance
   const nameSeed = Array.from(service.name).reduce((a, c) => a + c.charCodeAt(0), 0);
@@ -91,19 +65,4 @@ export async function recordHealth(serviceId: string, result: HealthCheckResult)
     rt: result.responseTime,
     simulated: result.simulated,
   });
-}
-
-export async function checkAll(architectureId: string): Promise<Array<{ serviceId: string; name: string; result: HealthCheckResult }>> {
-  const services = await prisma.service.findMany({
-    where: { architectureId },
-    select: { id: true, name: true, healthEndpoint: true },
-  });
-  const results = await Promise.all(
-    services.map(async (s) => {
-      const result = await checkService(s);
-      await recordHealth(s.id, result);
-      return { serviceId: s.id, name: s.name, result };
-    })
-  );
-  return results;
 }

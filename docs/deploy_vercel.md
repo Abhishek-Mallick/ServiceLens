@@ -4,6 +4,8 @@ ServiceLens is a stock Next.js 14 App Router app, so the happy path is trivial. 
 
 ---
 
+> Env vars and secrets: see **[`secrets.md`](./secrets.md)** for the full checklist.
+
 ## TL;DR
 
 | Subsystem | On Vercel | Notes |
@@ -15,8 +17,8 @@ ServiceLens is a stock Next.js 14 App Router app, so the happy path is trivial. 
 | Resend email | ✅ | |
 | Slack webhooks | ✅ | |
 | Live SSE bell / topology pulses | ⚠ Limited | See "Realtime" below |
-| Cron drills + job queue | ✅ via Vercel Cron or cron-job.org | See "Cron" below |
-| Git analyzer (clone + analyze) | ⚠ Limited | See "Git analyzer" below |
+| Monitoring scheduler (probes, rules, incidents) | ⚠ Needs an external cron | **Required.** See "Cron" below |
+| Repo analysis (GitHub API) | ✅ | No `git` binary needed. See "Repo analysis" below |
 | Docker compose | n/a | Vercel doesn't run your `docker-compose.yml` |
 
 ---
@@ -52,13 +54,14 @@ DATABASE_URL=$PROD_DATABASE_URL DIRECT_URL=$PROD_DIRECT_URL \
 
 ### What `/api/cron/tick` does
 
-Every invocation runs two things:
+Every call runs one scheduler tick (`lib/scheduler.ts`):
 
-1. **`runDueSchedules()`** — looks at every enabled `ChaosSchedule`, parses its `schedule` grammar (`every 5m` / `every 1h` / `14:00` UTC daily), and fires the action (`kill_service` / `degrade` / `latency_spike`) on the target service for any schedule whose interval has elapsed since `lastRunAt`. Each fire writes a HealthRecord, may open a critical incident (which triggers the notification + RCA pipeline), and updates `lastRunAt`.
+1. **Due probes.** Every enabled probe whose `intervalSec` has elapsed runs for real. Results write `HealthRecord`s, which evaluate alert rules and open or auto-resolve incidents.
+2. **Demo simulation.** Advances simulated health on demo architectures only.
+3. **`runDueSchedules()`.** Fires due chaos drills (demo architectures only).
+4. **`drain()`.** Runs pending `Job` rows (`probe`, `analyze`).
 
-2. **`drain()`** — pulls due `Job` rows from the queue and runs registered handlers (currently the seam from Phase 0; Phase 4's RCA generation is request-driven so the queue is empty in stock setups).
-
-**If you don't configure chaos schedules, you don't strictly need cron.** The "Run now" button in the Alerts → Chaos panel works without cron. Cron is only required for *recurring* drills.
+**Cron is required.** Vercel functions don't live between requests, so the in-process scheduler (`instrumentation.ts`) is skipped there. Without a cron nothing gets health-checked and no incidents open. Detection latency is roughly the cron cadence plus 3 probe intervals.
 
 ### Option A — Vercel Cron (cleanest, free tier OK)
 
@@ -88,26 +91,20 @@ Free, generous, hits any URL on the schedule you set.
    ```
 6. Save. Hit **Run now** once to confirm a 200.
 
-### Option C — GitHub Actions
+### Option C — GitHub Actions (bundled)
 
-```yaml
-# .github/workflows/cron.yml
-on:
-  schedule:
-    - cron: '*/5 * * * *'
-jobs:
-  tick:
-    runs-on: ubuntu-latest
-    steps:
-      - run: curl -fsS -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-               https://your-app.vercel.app/api/cron/tick
-```
+The repo ships `.github/workflows/scheduler-tick.yml`, which calls `/api/cron/tick` every 5 minutes. Add two repository secrets:
+
+- `SERVICELENS_URL`, e.g. `https://your-app.vercel.app`
+- `CRON_SECRET`, the same value as the app's env var
+
+It does nothing until `SERVICELENS_URL` is set. GitHub can delay scheduled runs by a few minutes under load; for tighter detection use Option B at 1 minute, or Option D.
 
 ### Option D — Self-hosted (no cron service)
 
 Run the standalone worker on any always-on box (Fly.io, Railway, your homelab):
 ```bash
-WORKER_INTERVAL=30 npm run worker
+SCHEDULER_INTERVAL=15 npm run worker
 ```
 Talks to the same Postgres your Vercel deployment uses. Drains the same queue.
 
@@ -132,21 +129,13 @@ Both are deliberately deferred — see `implementation_plan.md` Phase 7.
 
 ---
 
-## 4. Git analyzer — the second honest limitation
+## 4. Repo analysis
 
-`lib/git-analyzer.ts` uses `simple-git`, which **shells out to the `git` binary**. Vercel's Node runtime doesn't include `git` by default.
+Analysis reads repos through the GitHub REST API plus `raw.githubusercontent.com`. It never runs `git clone`, so it works on Vercel as-is.
 
-**What this affects:** the "Analyze service from Git repo" path (`POST /api/architectures/:id/analyze`). Every other feature — incidents, RCA, fix-PR, chaos, notifications, topology rendering — uses *stored* data and works perfectly without `git`.
-
-### Workarounds
-
-- **Option 1 (recommended for demos):** disable the analyze button in production, or seed your demo architectures with the existing static seed (`npm run prisma:seed`). The 10 seeded services already have full analysis populated.
-- **Option 2:** run the analyzer off-Vercel — a tiny worker on Fly.io or Railway calls `cloneShallow` + `extractKeyFiles` + writes to the same Postgres. The route just hands off a job.
-- **Option 3:** add `git` to the Vercel build with a custom `vercel.json` install command. Hacky and not officially supported — works today but might break on Vercel runtime upgrades:
-  ```json
-  { "installCommand": "yum install -y git && npm install" }
-  ```
-  (Amazon Linux 2 / runtimes change; double-check the base image.)
+- **Public repos:** no setup needed. Each service costs 2 GitHub API calls, and the unauthenticated limit is 60/hour per server IP.
+- **Private repos / larger meshes:** set `GITHUB_TOKEN` (a fine-grained token with read-only *Contents* access). That raises the limit to 5,000/hour.
+- **Timeouts:** analysis runs inside the request. On Hobby (60s function limit), analyze large meshes in batches with `POST /api/architectures/:id/analyze {"serviceIds": [...]}` (new services are already analyzed one at a time when added), or run analysis from `npm run worker` via the `analyze` job.
 
 ---
 

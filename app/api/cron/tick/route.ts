@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
-import { runDueSchedules } from '@/lib/chaos';
-import { drain } from '@/lib/jobs';
+import { tick } from '@/lib/scheduler';
 
-// External cron entry point — Vercel Cron, GitHub Actions, or `curl` from a
-// local launchd. Optional shared-secret guard via CRON_SECRET.
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
+
+// External cron entry point for serverless deployments (Vercel Cron, the
+// bundled GitHub Actions workflow, or any pinger). Runs one scheduler tick:
+// due probes → alert rules → incidents, demo chaos drills, job queue.
+// Guarded by CRON_SECRET when set.
 //
-// In dev you can hit this directly: `curl http://localhost:3000/api/cron/tick`.
+// In dev: `curl http://localhost:3000/api/cron/tick`.
 export async function GET(req: Request) {
   const required = process.env.CRON_SECRET;
   if (required) {
@@ -14,8 +18,8 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
   }
-  const [chaos, jobs] = await Promise.all([runDueSchedules(), drain({ limit: 25 })]);
-  return NextResponse.json({ chaos, jobsDrained: jobs.length });
+  const result = await tick();
+  return NextResponse.json(result);
 }
 
 export async function POST(req: Request) {

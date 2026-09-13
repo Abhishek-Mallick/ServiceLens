@@ -16,6 +16,7 @@ import { prisma } from './prisma';
 import { stringify } from './utils';
 import { publish } from './realtime';
 import { openIncident } from './incidents';
+import { assertDemoArchitecture } from './demo';
 
 export type ChaosAction = 'kill_service' | 'degrade' | 'latency_spike';
 
@@ -29,6 +30,7 @@ export interface ApplyChaosOptions {
 }
 
 export async function applyChaos(opts: ApplyChaosOptions) {
+  await assertDemoArchitecture(opts.architectureId, 'Chaos drills');
   const svc = await prisma.service.findFirst({
     where: { id: opts.serviceId, architectureId: opts.architectureId },
     select: { id: true, name: true },
@@ -140,8 +142,7 @@ export function isDue(parsed: ParsedSchedule, lastRunAt: Date | null, now = new 
 
 export async function runDueSchedules(now = new Date()): Promise<Array<{ scheduleId: string; ok: boolean; error?: string }>> {
   const schedules = await prisma.chaosSchedule.findMany({
-    where: { enabled: true },
-    include: { architecture: { select: { id: true } } },
+    where: { enabled: true, architecture: { demo: true } },
   });
   const results: Array<{ scheduleId: string; ok: boolean; error?: string }> = [];
   for (const s of schedules) {

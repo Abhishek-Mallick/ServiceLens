@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { requireSession } from '@/lib/auth-helpers';
 import { stringify } from '@/lib/utils';
+import { requireRole } from '@/lib/membership';
 
 const PatchInput = z.object({
   name: z.string().min(1).optional(),
@@ -14,10 +15,11 @@ const PatchInput = z.object({
   forDurationSec: z.number().int().min(0).max(86400).optional(),
 });
 
+// Editors and owners may change rules.
 async function loadOwned(ruleId: string, userId: string) {
-  return prisma.alertRule.findFirst({
-    where: { id: ruleId, architecture: { userId } },
-  });
+  const rule = await prisma.alertRule.findUnique({ where: { id: ruleId } });
+  if (!rule) return null;
+  return (await requireRole(rule.architectureId, userId, 'editor')) ? rule : null;
 }
 
 export async function PATCH(req: Request, { params }: { params: { ruleId: string } }) {

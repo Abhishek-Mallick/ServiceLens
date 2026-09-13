@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireSession } from '@/lib/auth-helpers';
+import { visibleTo } from '@/lib/access';
 
 // Lightweight global search powering the ⌘K palette. Searches architectures,
 // services, and open incidents owned by the current user.
@@ -14,13 +15,13 @@ export async function GET(req: Request) {
     // palette has useful navigation suggestions even before they type.
     const [arch, inc] = await Promise.all([
       prisma.architecture.findMany({
-        where: { userId: session.user.id },
+        where: visibleTo(session.user.id),
         orderBy: { updatedAt: 'desc' },
         take: 5,
         select: { id: true, name: true },
       }),
       prisma.incident.findMany({
-        where: { architecture: { userId: session.user.id }, status: { in: ['open', 'acknowledged'] } },
+        where: { architecture: visibleTo(session.user.id), status: { in: ['open', 'acknowledged'] } },
         orderBy: { openedAt: 'desc' },
         take: 5,
         select: { id: true, title: true, architectureId: true, severity: true },
@@ -35,18 +36,18 @@ export async function GET(req: Request) {
 
   const [arch, svc, inc] = await Promise.all([
     prisma.architecture.findMany({
-      where: { userId: session.user.id, name: { contains: q, mode: 'insensitive' } },
+      where: { ...visibleTo(session.user.id), name: { contains: q, mode: 'insensitive' } },
       take: 6,
       select: { id: true, name: true },
     }),
     prisma.service.findMany({
-      where: { architecture: { userId: session.user.id }, name: { contains: q, mode: 'insensitive' } },
+      where: { architecture: visibleTo(session.user.id), name: { contains: q, mode: 'insensitive' } },
       take: 8,
       select: { id: true, name: true, architectureId: true, framework: true },
     }),
     prisma.incident.findMany({
       where: {
-        architecture: { userId: session.user.id },
+        architecture: visibleTo(session.user.id),
         title: { contains: q, mode: 'insensitive' },
       },
       take: 6,

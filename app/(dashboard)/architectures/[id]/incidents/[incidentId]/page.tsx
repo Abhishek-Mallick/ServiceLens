@@ -9,10 +9,12 @@ import { SimulatedBadge } from '@/components/shared/simulated-badge';
 import { SeverityBadge } from '@/components/incidents/severity-badge';
 import { IncidentActions } from '@/components/incidents/incident-actions';
 import { formatRelative, parseJson } from '@/lib/utils';
-import { ArrowLeft, MessageSquare, AlertCircle, CheckCircle2, Check, UserPlus, Bot, FileText, ScrollText } from 'lucide-react';
+import { ArrowLeft, MessageSquare, AlertCircle, CheckCircle2, Check, UserPlus, Bot, FileText, ScrollText, PhoneCall, Siren } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { RcaPanel } from '@/components/incidents/rca-panel';
 import { FixPrPanel } from '@/components/incidents/fix-pr-panel';
+import { visibleTo } from '@/lib/access';
+import { atLeast, getRole } from '@/lib/membership';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,6 +28,13 @@ const eventIcon: Record<string, React.ComponentType<{ className?: string }>> = {
   rca_completed: Bot,
   fix_pr_generated: FileText,
   notification_sent: MessageSquare,
+  oncall_assigned: PhoneCall,
+  escalated: Siren,
+  fix_pr_opened: FileText,
+  fix_pr_merged: CheckCircle2,
+  fix_pr_failed: AlertCircle,
+  related_alert: AlertCircle,
+  severity_raised: AlertCircle,
   status_change: AlertCircle,
   log_snapshot: ScrollText,
 };
@@ -38,11 +47,12 @@ export default async function IncidentDetailPage({ params }: { params: { id: str
   if (!session?.user?.id) return null;
 
   const incident = await prisma.incident.findFirst({
-    where: { id: params.incidentId, architecture: { id: params.id, userId: session.user.id } },
+    where: { id: params.incidentId, architecture: { id: params.id, ...visibleTo(session.user.id) } },
     include: {
       service: true,
       rule: true,
       assignee: { select: { id: true, name: true, email: true } },
+      oncall: true,
       events: {
         orderBy: { at: 'asc' },
         include: { byUser: { select: { id: true, name: true, email: true } } },
@@ -50,6 +60,21 @@ export default async function IncidentDetailPage({ params }: { params: { id: str
     },
   });
   if (!incident) notFound();
+
+  const canEdit = atLeast(await getRole(params.id, session.user.id), 'editor');
+
+  // An RCA job queued or running for this incident, or a stream started in the
+  // last 3 min that hasn't completed: the panel should wait for it, not start another.
+  const lastStart = [...incident.events].reverse().find((e) => e.type === 'rca_started');
+  const completedAfter = lastStart && incident.events.some((e) => e.type === 'rca_completed' && e.at >= lastStart.at);
+  const streamInFlight = !!lastStart && !completedAfter && Date.now() - lastStart.at.getTime() < 3 * 60_000;
+  const queuedJob = incident.rcaMarkdown
+    ? null
+    : await prisma.job.findFirst({
+        where: { type: 'rca', status: { in: ['pending', 'running'] }, payload: { contains: `"incidentId":"${incident.id}"` } },
+        select: { id: true },
+      });
+  const rcaPending = !incident.rcaMarkdown && (streamInFlight || !!queuedJob);
 
   const snapshotEvent = [...incident.events].reverse().find((e) => e.type === 'log_snapshot');
   const snapshot: LogSnapshot | null = snapshotEvent?.payload
@@ -104,8 +129,8 @@ export default async function IncidentDetailPage({ params }: { params: { id: str
             </Card>
           )}
 
-          <RcaPanel incidentId={incident.id} initial={incident.rcaMarkdown} model={incident.rcaModel} />
-          <FixPrPanel incidentId={incident.id} hasRca={!!incident.rcaMarkdown} />
+          <RcaPanel incidentId={incident.id} initial={incident.rcaMarkdown} model={incident.rcaModel} pending={rcaPending} canGenerate={canEdit} />
+          <FixPrPanel incidentId={incident.id} hasRca={!!incident.rcaMarkdown} canEdit={canEdit} />
 
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-base">Timeline</CardTitle></CardHeader>
@@ -155,6 +180,16 @@ export default async function IncidentDetailPage({ params }: { params: { id: str
             {incident.rule && (
               <Field label="Rule">
                 <Link href={`/architectures/${params.id}/alerts`} className="text-primary hover:underline">{incident.rule.name}</Link>
+              </Field>
+            )}
+            {incident.oncall && (
+              <Field label="On-call paged">
+                {incident.oncall.name} <span className="text-muted-foreground">&lt;{incident.oncall.email}&gt;</span>
+                {incident.oncall.escalatedAt
+                  ? <div className="text-[12px] text-amber-400 mt-0.5">Escalated to {incident.oncall.escalationEmail} {formatRelative(incident.oncall.escalatedAt)}</div>
+                  : incident.oncall.escalationEmail && incident.status === 'open'
+                    ? <div className="text-[12px] text-muted-foreground mt-0.5">Escalates to {incident.oncall.escalationEmail} if not acknowledged</div>
+                    : null}
               </Field>
             )}
             <Field label="Assignee">{incident.assignee ? (incident.assignee.name ?? incident.assignee.email) : '—'}</Field>

@@ -24,12 +24,15 @@ export const emailChannel: NotificationChannel = {
       return recipients.map((to) => ({ channel: 'email', recipient: to, ok: false, error: 'RESEND_API_KEY not configured' }));
     }
     const from = process.env.RESEND_FROM ?? 'ServiceLens <onboarding@resend.dev>';
-    const ackUrl = msg.ackToken
-      ? `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/api/notify/ack?token=${encodeURIComponent(msg.ackToken)}`
-      : null;
-    const html = await render(<IncidentEmail msg={msg} ackUrl={ackUrl} />);
+    const canAck = msg.template === 'IncidentOpened' || msg.template === 'IncidentEscalated';
     const results: DeliveryResult[] = [];
     for (const to of recipients) {
+      // Each recipient gets their own token so the ack is attributed to them.
+      const token = msg.recipients.ackTokens?.[to] ?? msg.ackToken;
+      const ackUrl = canAck && token
+        ? `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/api/notify/ack?token=${encodeURIComponent(token)}`
+        : null;
+      const html = await render(<IncidentEmail msg={msg} ackUrl={ackUrl} />);
       try {
         const { error } = await sdk.emails.send({
           from,

@@ -1,34 +1,34 @@
-// Standalone worker tick — drains the Job queue and runs due chaos schedules.
-// Use this when self-hosting outside Vercel (so /api/cron/tick has nothing
-// poking it). On Vercel, the equivalent is a Vercel Cron entry pointing at
-// /api/cron/tick.
+// Standalone monitoring worker — runs the same scheduler tick as the in-process
+// loop (probes → rules → incidents, chaos drills on demo archs, job queue).
+// Use it when the web tier can't hold a loop (serverless) or you want monitoring
+// isolated from the web server; set SCHEDULER=off on the web tier in that case.
 //
-//   npm run worker          # tick every 30s
-//   WORKER_INTERVAL=5 npm run worker   # tick every 5s
+//   npm run worker                       # tick every 15s
+//   SCHEDULER_INTERVAL=5 npm run worker  # tick every 5s
 
-import { drain } from '../lib/jobs';
-import { runDueSchedules } from '../lib/chaos';
+import { tick } from '../lib/scheduler';
 
-const INTERVAL_SEC = Math.max(5, Number(process.env.WORKER_INTERVAL ?? 30));
+const INTERVAL_SEC = Math.max(5, Number(process.env.SCHEDULER_INTERVAL ?? process.env.WORKER_INTERVAL ?? 15));
 
-async function tick() {
-  const start = Date.now();
+let running = false;
+async function run() {
+  if (running) return;
+  running = true;
   try {
-    const [jobs, chaos] = await Promise.all([drain({ limit: 25 }), runDueSchedules()]);
-    const ranChaos = chaos.filter((c) => c.ok).length;
-    const failedChaos = chaos.filter((c) => !c.ok);
-    if (jobs.length || ranChaos || failedChaos.length) {
-      console.log(`[worker ${new Date().toISOString()}] jobs=${jobs.length} chaos_ok=${ranChaos} chaos_failed=${failedChaos.length} in ${Date.now() - start}ms`);
-      for (const f of failedChaos) console.warn(`  · chaos ${f.scheduleId}: ${f.error}`);
+    const r = await tick();
+    if (r.probed || r.chaos || r.jobs) {
+      console.log(`[worker ${new Date().toISOString()}] probed=${r.probed} simulated=${r.simulated} chaos=${r.chaos} jobs=${r.jobs} in ${r.ms}ms`);
     }
   } catch (err) {
     console.error('[worker] tick failed:', err);
+  } finally {
+    running = false;
   }
 }
 
 console.log(`[worker] starting — tick every ${INTERVAL_SEC}s`);
-void tick();
-const handle = setInterval(tick, INTERVAL_SEC * 1000);
+void run();
+const handle = setInterval(run, INTERVAL_SEC * 1000);
 
 function shutdown(sig: string) {
   console.log(`[worker] ${sig} — stopping`);

@@ -33,7 +33,8 @@ Full diagrams — observability loop, incident lifecycle, RCA pipeline, fix-PR f
 | Area | Capability | Highlights |
 |---|---|---|
 | **Discovery** | Service topology | Git-backed clone + analysis; infers frameworks, API contracts, event flows, and dependency edges into an interactive graph with live health overlays |
-| **Observability** | Health probes | HTTP/TCP per service; aggregated status, response-time history, sparklines; simulator fallback when endpoints are unreachable |
+| **Discovery** | Self-registration | Architecture API keys + idempotent `PUT /api/v1/services/{name}` for CI and agents (`/SKILL.md`) |
+| **Observability** | Health probes | HTTP/TCP probes run server-side on a schedule (SSRF-guarded); heartbeats (push) for private services; simulated data only on the demo mesh |
 | **Observability** | Alert rules | JSON DSL (`status_eq`, `p95_latency_gt`, `error_rate_gt`, `consecutive_down`, `regression_failed`); duration windows + auto-resolve |
 | **Observability** | Log aggregation | HEC-style bearer-token ingest, search, SSE live tail, synthetic logs correlated with health |
 | **Observability** | Regression testing | Flow discovery + contract validation across the service mesh |
@@ -41,7 +42,7 @@ Full diagrams — observability loop, incident lifecycle, RCA pipeline, fix-PR f
 | **Reliability** | Runbook memory | Resolution notes from past incidents feed future RCA via keyword-overlap retrieval |
 | **Reliability** | Chaos engineering | Scheduled or manual `kill_service` / `degrade` / `latency_spike` to validate detect → incident → RCA end-to-end |
 | **AI SRE** | Root-cause analysis | 6-signal context assembly (health, neighbors, logs, regressions, runbook); streamed markdown RCA over SSE |
-| **AI SRE** | Fix-PR generation | Structured patch JSON — branch, per-file hunks, PR title/body, blast radius; copy/download or GitHub draft PR |
+| **AI SRE** | Fix PRs | Generated from the RCA and the service's real source at a pinned commit; the diff is computed server-side; opened as a **draft PR** via the GitHub App (manual or automatic). Conflict-checked, 1 PR/repo/hour, never merges |
 | **Realtime** | Live updates | Multiplexed SSE — topology pulses, health changes, incident bell; no polling |
 | **Realtime** | Notifications | In-app feed, Resend email, Slack webhooks with magic-link acknowledge |
 | **Platform** | Multi-user workspaces | Per-architecture `owner` / `editor` / `viewer` roles; append-only audit log on every mutation |
@@ -172,6 +173,8 @@ Sign in with `demo@servicelens.com` / `demo123`.
 | [`docs/LOCAL_SETUP.md`](./docs/LOCAL_SETUP.md) | Local environment, database, commands, demo login |
 | [`docs/architecture.md`](./docs/architecture.md) | System design, data flows, RCA pipeline, module reference |
 | [`docs/architecture-prompt.md`](./docs/architecture-prompt.md) | Eraser AI prompt for consolidated architecture diagram |
-| [`docs/env_get.md`](./docs/env_get.md) | Where every environment variable comes from |
+| [`docs/USER_GUIDE.md`](./docs/USER_GUIDE.md) | **How to use ServiceLens fully:** onboarding, API/CI/agents, rules, paging, RCA, fix PRs, logs, troubleshooting |
+| [`docs/secrets.md`](./docs/secrets.md) | Secrets & env vars: what's required, where to get each, how to set them on Vercel |
+| [`docs/env_get.md`](./docs/env_get.md) | Longer per-provider walkthroughs for each env value |
 | [`docs/deploy_vercel.md`](./docs/deploy_vercel.md) | Production deployment and cron setup |
 | [Incident Triage Env](https://github.com/deepraj21/Incident-Triage-Env/tree/feat/incident-triage-env) | OpenEnv RL environment for training incident-response agents |

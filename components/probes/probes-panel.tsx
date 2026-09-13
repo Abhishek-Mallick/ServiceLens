@@ -11,6 +11,13 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { Loader2, PlayCircle, Plus, Trash2 } from 'lucide-react';
 import { formatRelative } from '@/lib/utils';
 
+const TARGET_HINT: Record<string, string> = {
+  http: 'https://example.com/health',
+  tcp: 'host:port',
+  postgres: 'postgres://readonly:password@db.example.com:5432/app?sslmode=require',
+  redis: 'rediss://default:password@cache.example.com:6379',
+};
+
 export interface ProbeRow {
   id: string;
   name: string;
@@ -52,7 +59,7 @@ export function ProbesPanel({ serviceId, initialProbes }: { serviceId: string; i
       }),
     });
     setBusy(null);
-    if (!res.ok) { toast.error('Failed to add probe'); return; }
+    if (!res.ok) { const j = await res.json().catch(() => ({})); toast.error(j.error ?? 'Failed to add probe'); return; }
     toast.success('Probe added');
     setOpen(false);
     setForm({ name: '', type: 'http', target: '', intervalSec: 30, timeoutSec: 5, expectStatus: 200 });
@@ -101,14 +108,21 @@ export function ProbesPanel({ serviceId, initialProbes }: { serviceId: string; i
                     className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
                     <option value="http">HTTP</option>
                     <option value="tcp">TCP</option>
+                    <option value="postgres">PostgreSQL</option>
+                    <option value="redis">Redis</option>
                   </select>
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="p-target">Target</Label>
                   <Input id="p-target" value={form.target} onChange={(e) => setForm({ ...form, target: e.target.value })}
-                    placeholder={form.type === 'http' ? 'https://example.com/health' : 'host:port'} required />
+                    placeholder={TARGET_HINT[form.type] ?? 'host:port'} autoComplete="off" required />
                 </div>
               </div>
+              {(form.type === 'postgres' || form.type === 'redis') && (
+                <p className="text-[12px] text-muted-foreground -mt-1">
+                  The connection string is stored encrypted and only a redacted copy is shown. Use a read-only user; the check runs <code>{form.type === 'postgres' ? 'SELECT 1' : 'PING'}</code>.
+                </p>
+              )}
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1.5">
                   <Label>Interval (s)</Label>
@@ -135,14 +149,14 @@ export function ProbesPanel({ serviceId, initialProbes }: { serviceId: string; i
       </CardHeader>
       <CardContent className="pt-0 space-y-2">
         {probes.length === 0 && (
-          <div className="text-xs text-muted-foreground">No probes yet. Without probes, this service's health uses the simulator.</div>
+          <div className="text-xs text-muted-foreground">No probes yet. Set a deployed URL in the service settings for an automatic health check, or add HTTP, TCP, Postgres or Redis probes here.</div>
         )}
         {probes.map((p) => (
           <div key={p.id} className="flex items-center justify-between gap-3 rounded-md border border-border/60 p-2.5">
             <div className="min-w-0">
               <div className="text-sm font-medium truncate">{p.name}</div>
               <div className="text-[11px] text-muted-foreground truncate font-mono">
-                {p.type.toUpperCase()} {p.target}{p.expectStatus ? ` → ${p.expectStatus}` : ''} · every {p.intervalSec}s
+                {p.type === 'heartbeat' ? `HEARTBEAT · push, expected every ${p.intervalSec}s` : `${p.type.toUpperCase()} ${p.target}`}{p.expectStatus ? ` → ${p.expectStatus}` : ''} · every {p.intervalSec}s
               </div>
               <div className="text-[10px] text-muted-foreground mt-0.5">Last run: {formatRelative(p.lastRunAt)}</div>
             </div>

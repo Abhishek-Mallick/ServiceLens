@@ -5,7 +5,8 @@
 
 import { pickKey, markFailed, isRateLimited, hasOpenRouterKeys } from './openrouter-keys';
 
-const BASE_URL = 'https://openrouter.ai/api/v1';
+// Override for OpenAI-compatible proxies / gateways.
+const BASE_URL = (process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1').replace(/\/+$/, '');
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -17,6 +18,20 @@ export interface StreamOptions {
   temperature?: number;
   responseFormat?: 'text' | 'json_object';
   maxTokens?: number;
+  // Never fall back to the heuristic generator — throw AiUnavailableError
+  // instead. Required wherever output becomes real changes (fix PRs).
+  strict?: boolean;
+}
+
+export class AiUnavailableError extends Error {
+  constructor(public reason: 'not_configured' | 'rate_limited') {
+    super(
+      reason === 'not_configured'
+        ? 'No AI provider configured. Set OPENROUTER_API_KEYS to generate fixes.'
+        : 'Every OpenRouter key is rate-limited right now. Try again in a minute or add more keys to OPENROUTER_API_KEYS.'
+    );
+    this.name = 'AiUnavailableError';
+  }
 }
 
 export function isStreamingEnabled(): boolean {
@@ -111,13 +126,17 @@ export async function* streamChat(messages: ChatMessage[], opts: StreamOptions =
 // Non-streaming variant — accumulates and returns once. Used for the fix-PR
 // pass where we want a single JSON document. Same key-rotation semantics.
 export async function chatOnce(messages: ChatMessage[], opts: StreamOptions = {}): Promise<string> {
-  if (!hasOpenRouterKeys()) return heuristicCompletion(messages, opts.responseFormat === 'json_object');
+  if (!hasOpenRouterKeys()) {
+    if (opts.strict) throw new AiUnavailableError('not_configured');
+    return heuristicCompletion(messages, opts.responseFormat === 'json_object');
+  }
 
   const model = opts.model ?? process.env.OPENROUTER_MODEL ?? 'meta-llama/llama-3.3-70b-instruct:free';
 
   for (let attempt = 0; attempt < 8; attempt++) {
     const apiKey = pickKey();
     if (!apiKey) {
+      if (opts.strict) throw new AiUnavailableError('rate_limited');
       console.warn('[openrouter] all keys cooling down — falling back to heuristic');
       return heuristicCompletion(messages, opts.responseFormat === 'json_object');
     }
@@ -153,6 +172,7 @@ export async function chatOnce(messages: ChatMessage[], opts: StreamOptions = {}
     return json.choices?.[0]?.message?.content ?? '';
   }
 
+  if (opts.strict) throw new AiUnavailableError('rate_limited');
   return heuristicCompletion(messages, opts.responseFormat === 'json_object');
 }
 

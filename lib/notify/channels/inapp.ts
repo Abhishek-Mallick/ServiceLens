@@ -13,6 +13,8 @@ export const inappChannel: NotificationChannel = {
           msg.template === 'IncidentOpened' ? 'incident_opened' :
           msg.template === 'IncidentAcknowledged' ? 'incident_acked' :
           msg.template === 'IncidentResolved' ? 'incident_resolved' :
+          msg.template === 'IncidentEscalated' ? 'incident_escalated' :
+          msg.template === 'FixPRReady' ? 'fix_pr_ready' :
           'fix_pr_ready',
         title: msg.title,
         body: msg.body,

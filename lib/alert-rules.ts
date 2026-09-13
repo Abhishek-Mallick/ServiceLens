@@ -107,22 +107,8 @@ export async function evaluateRulesForService(serviceId: string): Promise<void> 
     const condition = parseJson<AlertCondition | null>(rule.condition, null);
     if (!condition) continue;
 
-    // forDurationSec: only fire if the condition has been true continuously
-    // for that long. Approximate by checking the trailing slice.
-    const windowed: AlertContext = {
-      ...ctx,
-      history: ctx.history.filter((h) => h.checkedAt.getTime() >= Date.now() - rule.windowSec * 1000),
-    };
-
-    const isFiring = evaluate(condition, windowed);
-
-    if (isFiring) {
-      // Need at least 1 check in the for-duration trailing slice that confirms.
-      const forSlice = windowed.history.filter((h) => h.checkedAt.getTime() >= Date.now() - rule.forDurationSec * 1000);
-      if (forSlice.length === 0) continue;
-      const persisted = evaluate(condition, { ...windowed, history: forSlice });
-      if (!persisted) continue;
-
+    const decision = decide(condition, rule, ctx);
+    if (decision === 'fire') {
       await openIncident({
         architectureId: service.architectureId,
         ruleId: rule.id,
@@ -133,14 +119,51 @@ export async function evaluateRulesForService(serviceId: string): Promise<void> 
         source: 'rule',
         simulated: false,
       });
-    } else {
-      // Clear gates: condition off across 2× the window.
-      const clearSliceSince = Date.now() - rule.windowSec * 2 * 1000;
-      const clearSlice = ctx.history.filter((h) => h.checkedAt.getTime() >= clearSliceSince);
-      const stillFiring = clearSlice.length > 0 && evaluate(condition, { ...ctx, history: clearSlice });
-      if (!stillFiring) {
-        await resolveIncidentForRule(rule.id, service.id, 'auto');
-      }
+    } else if (decision === 'clear') {
+      await resolveIncidentForRule(rule.id, service.id, 'auto');
     }
   }
+}
+
+export interface RuleTiming {
+  windowSec: number;
+  forDurationSec: number;
+}
+
+// Pure decision for one rule against a health history (oldest first).
+// Prometheus-style `for`: the condition is evaluated over `windowSec` ending at
+// each sample; it must have been true at every sample for at least
+// `forDurationSec` before the rule fires.
+//   fire  — continuously true for ≥ forDurationSec (or true now when forDurationSec = 0)
+//   clear — false now and false across 2× the window (safe to auto-resolve)
+//   hold  — anything in between; leave any open incident alone
+export function decide(
+  condition: AlertCondition,
+  rule: RuleTiming,
+  ctx: AlertContext,
+  now: number = Date.now()
+): 'fire' | 'clear' | 'hold' {
+  const at = (t: number, windowSec: number) =>
+    evaluate(condition, {
+      ...ctx,
+      history: ctx.history.filter((h) => {
+        const ts = h.checkedAt.getTime();
+        return ts <= t && ts > t - windowSec * 1000;
+      }),
+    });
+
+  if (at(now, rule.windowSec)) {
+    if (rule.forDurationSec <= 0) return 'fire';
+    // Walk back through samples while the condition stays true.
+    let firstTrue = now;
+    for (let i = ctx.history.length - 1; i >= 0; i--) {
+      const t = ctx.history[i].checkedAt.getTime();
+      if (t > now) continue;
+      if (!at(t, rule.windowSec)) break;
+      firstTrue = t;
+    }
+    return now - firstTrue >= rule.forDurationSec * 1000 ? 'fire' : 'hold';
+  }
+
+  return at(now, rule.windowSec * 2) ? 'hold' : 'clear';
 }

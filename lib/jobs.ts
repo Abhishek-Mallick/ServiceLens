@@ -15,7 +15,10 @@ export type JobType =
   | 'rca'
   | 'fix_pr'
   | 'notify'
-  | 'chaos';
+  | 'chaos'
+  | 'incident_opened'
+  | 'escalate'
+  | 'contract_tests';
 
 export interface JobHandlerContext<P> {
   jobId: string;
@@ -73,55 +76,82 @@ export async function drain(options: RunOptions = {}): Promise<string[]> {
 
   const ran: string[] = [];
   for (const job of candidates) {
-    const claim = await prisma.job.updateMany({
-      where: { id: job.id, status: 'pending' },
-      data: { status: 'running', startedAt: new Date(), attempts: { increment: 1 } },
+    if (await runClaimed(job)) ran.push(job.id);
+  }
+  return ran;
+}
+
+type JobRow = Awaited<ReturnType<typeof prisma.job.findMany>>[number];
+
+// Claim (compare-and-set pending → running) and execute one job. Returns false
+// if another worker claimed it first.
+async function runClaimed(job: JobRow): Promise<boolean> {
+  const claim = await prisma.job.updateMany({
+    where: { id: job.id, status: 'pending' },
+    data: { status: 'running', startedAt: new Date(), attempts: { increment: 1 } },
+  });
+  if (claim.count === 0) return false;
+
+  let handler = handlers.get(job.type as JobType);
+  if (!handler) {
+    // Fresh (e.g. serverless) processes may not have registered yet. Dynamic
+    // import keeps jobs.ts free of a static cycle with the handler modules.
+    const { registerJobHandlers } = await import('./job-handlers');
+    registerJobHandlers();
+    handler = handlers.get(job.type as JobType);
+  }
+  if (!handler) {
+    await prisma.job.update({
+      where: { id: job.id },
+      data: { status: 'failed', error: `no handler registered for type "${job.type}"`, completedAt: new Date() },
     });
-    if (claim.count === 0) continue;
-
-    const handler = handlers.get(job.type as JobType);
-    if (!handler) {
-      await prisma.job.update({
-        where: { id: job.id },
-        data: { status: 'failed', error: `no handler registered for type "${job.type}"`, completedAt: new Date() },
-      });
-      ran.push(job.id);
-      continue;
-    }
-
-    try {
-      const result = await handler({
-        jobId: job.id,
-        payload: parseJson<unknown>(job.payload, {}),
-        attempt: job.attempts + 1,
-      });
-      await prisma.job.update({
-        where: { id: job.id },
-        data: {
-          status: 'completed',
-          result: result === undefined || result === null ? null : stringify(result),
-          completedAt: new Date(),
-        },
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      const attemptsAfter = job.attempts + 1;
-      const exhausted = attemptsAfter >= job.maxAttempts;
-      await prisma.job.update({
-        where: { id: job.id },
-        data: {
-          status: exhausted ? 'failed' : 'pending',
-          error: message,
-          completedAt: exhausted ? new Date() : null,
-          // backoff: next attempt in 2^attempts seconds
-          scheduledAt: exhausted ? job.scheduledAt : new Date(Date.now() + 1000 * 2 ** attemptsAfter),
-        },
-      });
-    }
-    ran.push(job.id);
+    return true;
   }
 
-  return ran;
+  try {
+    const result = await handler({
+      jobId: job.id,
+      payload: parseJson<unknown>(job.payload, {}),
+      attempt: job.attempts + 1,
+    });
+    await prisma.job.update({
+      where: { id: job.id },
+      data: {
+        status: 'completed',
+        result: result === undefined || result === null ? null : stringify(result),
+        completedAt: new Date(),
+      },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const attemptsAfter = job.attempts + 1;
+    const exhausted = attemptsAfter >= job.maxAttempts;
+    await prisma.job.update({
+      where: { id: job.id },
+      data: {
+        status: exhausted ? 'failed' : 'pending',
+        error: message,
+        completedAt: exhausted ? new Date() : null,
+        // backoff: next attempt in 2^attempts seconds
+        scheduledAt: exhausted ? job.scheduledAt : new Date(Date.now() + 1000 * 2 ** attemptsAfter),
+      },
+    });
+  }
+  return true;
+}
+
+// Enqueue durably, then try to run it right away in this process. If this
+// process dies (serverless freeze, crash) the row stays pending and the next
+// scheduler drain picks it up — so work is never lost, just delayed.
+export async function kick<P>(type: JobType, payload: P, options: EnqueueOptions = {}): Promise<string> {
+  const id = await enqueue(type, payload, options);
+  if (!options.scheduledAt || options.scheduledAt.getTime() <= Date.now()) {
+    const job = await prisma.job.findUnique({ where: { id } });
+    if (job) {
+      void runClaimed(job).catch((err) => console.error(`[jobs] ${type} ${id} failed to run:`, err));
+    }
+  }
+  return id;
 }
 
 // Dev convenience: a setInterval-based loop. Only started explicitly

@@ -6,8 +6,7 @@ import { cn } from '@/lib/utils';
 export function ArchitectureTabs({ architectureId }: { architectureId: string }) {
   const pathname = usePathname();
   const tabs = [
-    { href: `/architectures/${architectureId}`, label: 'Overview', exact: true },
-    { href: `/architectures/${architectureId}/topology`, label: 'Topology' },
+    { href: `/architectures/${architectureId}`, label: 'Workspace', exact: true },
     { href: `/architectures/${architectureId}/services`, label: 'Services' },
     { href: `/architectures/${architectureId}/regression`, label: 'Regression' },
     { href: `/architectures/${architectureId}/health`, label: 'Health' },

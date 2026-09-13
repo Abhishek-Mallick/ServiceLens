@@ -10,7 +10,7 @@ test.describe('Architectures', () => {
     await expect(page.getByText(/e-commerce platform/i).first()).toBeVisible();
   });
 
-  test('user can create a new architecture via the template wizard', async ({ page }) => {
+  test('user can create an empty architecture via the onboarding wizard', async ({ page }) => {
     await loginAsDemo(page);
     await page.goto('/architectures/new');
 
@@ -20,7 +20,7 @@ test.describe('Architectures', () => {
     await page.getByLabel('Description').fill('Created from a Playwright E2E test.');
     await page.getByRole('button', { name: /^continue$/i }).click();
 
-    // Step 2 — keep the default Blank template selected.
+    // Step 2 — register no services; creates an empty architecture.
     await page.getByRole('button', { name: /create architecture/i }).click();
     await page.waitForURL(/\/architectures\/[\w-]+$/, { timeout: 20_000 });
     await expect(page.getByText(name).first()).toBeVisible();

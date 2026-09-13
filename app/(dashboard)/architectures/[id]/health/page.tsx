@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { HealthDashboard } from '@/components/health/health-dashboard';
+import { visibleTo } from '@/lib/access';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +12,7 @@ export default async function HealthPage({ params }: { params: { id: string } })
   if (!session?.user?.id) return null;
 
   const architecture = await prisma.architecture.findFirst({
-    where: { id: params.id, userId: session.user.id },
+    where: { id: params.id, ...visibleTo(session.user.id) },
     include: {
       services: {
         include: {

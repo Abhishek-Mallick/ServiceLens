@@ -4,6 +4,7 @@ import GitHubProvider from 'next-auth/providers/github';
 import GoogleProvider from 'next-auth/providers/google';
 import bcrypt from 'bcryptjs';
 import { prisma } from './prisma';
+import { grantDemoAccess } from './membership';
 
 const providers: NextAuthOptions['providers'] = [
   CredentialsProvider({
@@ -72,7 +73,7 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user, account }) {
       if (!user.email) return true;
       if (account?.provider === 'github') {
-        await prisma.user.upsert({
+        const dbUser = await prisma.user.upsert({
           where: { email: user.email },
           update: { name: user.name, image: user.image, githubId: account.providerAccountId },
           create: {
@@ -82,8 +83,9 @@ export const authOptions: NextAuthOptions = {
             githubId: account.providerAccountId,
           },
         });
+        await grantDemoAccess(dbUser.id).catch(() => {});
       } else if (account?.provider === 'google') {
-        await prisma.user.upsert({
+        const dbUser = await prisma.user.upsert({
           where: { email: user.email },
           update: { name: user.name, image: user.image },
           create: {
@@ -92,6 +94,7 @@ export const authOptions: NextAuthOptions = {
             image: user.image ?? null,
           },
         });
+        await grantDemoAccess(dbUser.id).catch(() => {});
       }
       return true;
     },

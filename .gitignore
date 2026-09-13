@@ -15,3 +15,5 @@ tmp
 repos
 !tests/fixtures/repos
 !tests/fixtures/repos/**
+
+PLAN.md

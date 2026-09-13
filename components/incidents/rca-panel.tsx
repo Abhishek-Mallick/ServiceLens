@@ -9,12 +9,17 @@ export function RcaPanel({
   incidentId,
   initial,
   model,
+  pending = false,
+  canGenerate = true,
 }: {
   incidentId: string;
   initial: string | null;
   model: string | null;
+  pending?: boolean; // an RCA is already being generated server-side
+  canGenerate?: boolean; // viewers can read but not (re)generate
 }) {
   const [text, setText] = useState(initial ?? '');
+  const [waiting, setWaiting] = useState(pending);
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const accumRef = useRef('');
@@ -72,9 +77,28 @@ export function RcaPanel({
     }
   }
 
-  // Auto-start if the incident has no RCA yet — surfaces the headline feature.
+  // A background RCA (queued when the incident opened) is running: poll for it
+  // instead of starting a second, duplicate LLM stream.
   useEffect(() => {
-    if (!initial) {
+    if (!waiting) return;
+    let stop = false;
+    const started = Date.now();
+    const tick = async () => {
+      if (stop) return;
+      const r = await fetch(`/api/incidents/${incidentId}`).catch(() => null);
+      const j = r?.ok ? await r.json().catch(() => null) : null;
+      const md = j?.incident?.rcaMarkdown as string | null | undefined;
+      if (md) { setText(md); setWaiting(false); return; }
+      if (Date.now() - started > 4 * 60_000) { setWaiting(false); return; } // give up; user can generate
+      setTimeout(tick, 3000);
+    };
+    const t = setTimeout(tick, 1500);
+    return () => { stop = true; clearTimeout(t); };
+  }, [waiting, incidentId]);
+
+  // Auto-start if the incident has no RCA yet and nothing is generating it.
+  useEffect(() => {
+    if (!initial && !pending && canGenerate) {
       // small delay so the page paints first
       const t = setTimeout(() => generate(), 250);
       return () => clearTimeout(t);
@@ -87,14 +111,14 @@ export function RcaPanel({
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex items-center gap-2">
           <Bot className="h-4 w-4 text-primary" /> AI root-cause analysis
-          {streaming && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+          {(streaming || waiting) && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
         </CardTitle>
         <CardDescription className="flex items-center justify-between gap-2">
           <span>{model ? `model: ${model}` : 'Streams citations from the captured log snapshot and health window.'}</span>
-          <Button size="sm" variant="outline" onClick={generate} disabled={streaming}>
+          {canGenerate && <Button size="sm" variant="outline" onClick={generate} disabled={streaming || waiting}>
             {streaming ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : text ? <RefreshCw className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
             {text ? 'Regenerate' : 'Generate'}
-          </Button>
+          </Button>}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -103,8 +127,14 @@ export function RcaPanel({
           <div className="prose prose-invert max-w-none text-sm">
             <pre className="whitespace-pre-wrap font-sans leading-relaxed">{text}{streaming && <span className="inline-block w-2 h-4 bg-foreground/60 align-text-bottom animate-pulse ml-0.5" />}</pre>
           </div>
+        ) : waiting ? (
+          <div className="text-sm text-muted-foreground">Analysis started automatically when the incident opened — it will appear here in a few seconds.</div>
         ) : !streaming ? (
-          <div className="text-sm text-muted-foreground">No analysis yet. Click <em>Generate</em> to produce one. Without <code className="text-[10px]">OPENROUTER_API_KEY</code>, a heuristic fallback is used.</div>
+          <div className="text-sm text-muted-foreground">
+            {canGenerate
+              ? <>No analysis yet. Click <em>Generate</em> to produce one. Without <code className="text-[10px]">OPENROUTER_API_KEYS</code>, a heuristic fallback is used.</>
+              : 'No analysis yet. An editor can generate one.'}
+          </div>
         ) : (
           <div className="text-sm text-muted-foreground">Streaming…</div>
         )}

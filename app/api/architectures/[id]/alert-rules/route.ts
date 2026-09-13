@@ -41,7 +41,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await requireSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const arch = await requireOwnedArchitecture(params.id, session.user.id);
+  const arch = await requireOwnedArchitecture(params.id, session.user.id, 'editor');
   if (!arch) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   const body = RuleInput.parse(await req.json());
   const rule = await prisma.alertRule.create({

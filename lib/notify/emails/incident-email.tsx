@@ -76,6 +76,7 @@ export function IncidentEmail({ msg, ackUrl }: { msg: NotificationMessage; ackUr
                 {msg.incident.serviceName && <Detail label="Service" value={msg.incident.serviceName} />}
                 <Detail label="Architecture" value={msg.incident.architectureName} />
                 <Detail label="Opened" value={new Date(msg.incident.openedAt).toUTCString()} />
+                {msg.oncall && <Detail label="On-call" value={`${msg.oncall.name} <${msg.oncall.email}>`} />}
                 {msg.incident.resolution && <Detail label="Resolution" value={msg.incident.resolution} />}
               </div>
             )}
@@ -87,7 +88,7 @@ export function IncidentEmail({ msg, ackUrl }: { msg: NotificationMessage; ackUr
 
           <Hr style={{ borderColor: palette.hairline, margin: '32px 0' }} />
           <Text style={{ margin: 0, color: palette.muted, fontSize: 11 }}>
-            You're receiving this because notifications are enabled in your ServiceLens profile. <Link href={`${process.env.NEXT_PUBLIC_APP_URL ?? ''}/settings`} style={{ color: palette.info, textDecoration: 'none' }}>Manage preferences</Link>.
+            You're receiving this because you're a member of this architecture or listed in its on-call directory. <Link href={`${process.env.NEXT_PUBLIC_APP_URL ?? ''}/settings`} style={{ color: palette.info, textDecoration: 'none' }}>Manage preferences</Link>.
           </Text>
         </Container>
       </Body>

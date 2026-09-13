@@ -13,6 +13,7 @@ import { RegressionTrendChart } from '@/components/dashboard/regression-trend-ch
 import { TopologyPreview } from '@/components/dashboard/topology-preview';
 import { buildTopology } from '@/lib/topology-builder';
 import type { TopologyGraph } from '@/lib/types';
+import { visibleTo } from '@/lib/access';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,31 +23,31 @@ export default async function DashboardHome() {
 
   const [architectures, totalServices, healthCounts, recentRuns, openIncidents, primaryArch] = await Promise.all([
     prisma.architecture.findMany({
-      where: { userId: session.user.id },
+      where: visibleTo(session.user.id),
       include: { _count: { select: { services: true } } },
       orderBy: { updatedAt: 'desc' },
       take: 6,
     }),
-    prisma.service.count({ where: { architecture: { userId: session.user.id } } }),
+    prisma.service.count({ where: { architecture: visibleTo(session.user.id) } }),
     prisma.service.groupBy({
       by: ['healthStatus'],
-      where: { architecture: { userId: session.user.id } },
+      where: { architecture: visibleTo(session.user.id) },
       _count: true,
     }),
     prisma.regressionRun.findMany({
-      where: { architecture: { userId: session.user.id } },
+      where: { architecture: visibleTo(session.user.id) },
       include: { architecture: { select: { name: true, id: true } } },
       orderBy: { createdAt: 'desc' },
       take: 6,
     }),
     prisma.incident.findMany({
-      where: { architecture: { userId: session.user.id }, status: { in: ['open', 'acknowledged'] } },
+      where: { architecture: visibleTo(session.user.id), status: { in: ['open', 'acknowledged'] } },
       include: { architecture: { select: { id: true, name: true } }, service: { select: { name: true } } },
       orderBy: { openedAt: 'desc' },
       take: 5,
     }),
     prisma.architecture.findFirst({
-      where: { userId: session.user.id },
+      where: visibleTo(session.user.id),
       orderBy: { updatedAt: 'desc' },
       include: { services: true },
     }),
