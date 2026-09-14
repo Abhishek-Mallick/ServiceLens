@@ -123,14 +123,16 @@ Rules that matter:
 - Set `NEXTAUTH_URL` for **Production only**. On Preview deployments NextAuth falls back to Vercel's per-deployment URL, and OAuth sign-in won't work there unless you add those callback URLs.
 - Don't set `ALLOW_PRIVATE_PROBES`, `SCHEDULER` or `SCHEDULER_INTERVAL` on Vercel.
 
-### Database schema (not run by the build)
-The build only runs `prisma generate`. Apply the schema to the prod DB from your machine, using the prod connection strings, once per schema change:
+### Database schema (applied by production builds)
+Vercel runs `npm run vercel-build` (`scripts/vercel-build.cjs`). On **production** deploys it runs `prisma db push` before `next build`, so new columns exist before any page reads them; it needs `DIRECT_URL` set for Production. Only non-destructive changes are applied. If a change would drop a column or table that holds data, the **build fails** instead, and you apply that change by hand after checking it. Preview deploys never push, because previews usually share the production database.
+
+Still run by hand, from your machine:
 ```bash
-DATABASE_URL="<prod pooled>" DIRECT_URL="<prod direct>" npm run prisma:push
 DATABASE_URL="<prod pooled>" DIRECT_URL="<prod direct>" npm run db:migrate-demo   # safe to re-run
 # first deploy only, if you want the demo mesh:
 DATABASE_URL="<prod pooled>" DIRECT_URL="<prod direct>" npm run prisma:seed
 ```
+If your network's DNS blocks `*.neon.tech` (error `P1001`), see "Can't reach database server" in [`LOCAL_SETUP.md`](./LOCAL_SETUP.md#troubleshooting).
 
 ---
 

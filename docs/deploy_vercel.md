@@ -39,11 +39,10 @@ Set every value from `docs/env_get.md` in **Project Settings → Environment Var
 - `NEXTAUTH_URL` = your prod URL (e.g. `https://servicelens.vercel.app`)
 - `NEXT_PUBLIC_APP_URL` = same as `NEXTAUTH_URL`
 
-After the first deploy, run the schema push once locally targeting your prod DB:
+The schema is applied by the build: production deploys run `npm run vercel-build`, which runs `prisma db push` (non-destructive changes only; a destructive one fails the build) before `next build`. Set `DIRECT_URL` for the Production environment. Preview deploys skip the push.
+
+Optionally, load the demo mesh once from your machine:
 ```bash
-DATABASE_URL=$PROD_DATABASE_URL DIRECT_URL=$PROD_DIRECT_URL \
-  npx prisma db push
-# optionally:
 DATABASE_URL=$PROD_DATABASE_URL DIRECT_URL=$PROD_DIRECT_URL \
   npm run prisma:seed
 ```
@@ -163,7 +162,7 @@ Nothing else to configure.
 - [ ] `vercel link` or import the repo via the dashboard.
 - [ ] Set every required env var (see `docs/env_get.md`).
 - [ ] Set `NEXTAUTH_URL` and `NEXT_PUBLIC_APP_URL` to the prod URL.
-- [ ] `prisma db push` against the prod `DIRECT_URL` once.
+- [ ] `DIRECT_URL` set for Production (the production build applies the schema with it).
 - [ ] (Optional) `prisma:seed` if you want the demo data live.
 - [ ] Add OAuth callback URLs for GitHub / Google to point at `https://your-app/api/auth/callback/{github,google}`.
 - [ ] Decide on cron: Vercel Cron (`vercel.json`) **or** cron-job.org pointing at `/api/cron/tick` + `Authorization: Bearer $CRON_SECRET`.
