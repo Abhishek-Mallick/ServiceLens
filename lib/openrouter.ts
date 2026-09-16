@@ -1,7 +1,7 @@
-import { hasOpenRouterKeys } from './openrouter-keys';
+import { hasWorkersAiCredentials } from './workers-ai-keys';
 
-// Whether an LLM is configured (OPENROUTER_API_KEY or OPENROUTER_API_KEYS).
+// Whether an LLM is configured (WORKERS_AI_CREDENTIALS or WORKERS_AI_CREDENTIAL).
 // The actual calls live in lib/openrouter-stream.ts.
 export function isAIEnabled(): boolean {
-  return hasOpenRouterKeys();
+  return hasWorkersAiCredentials();
 }

@@ -1,19 +1,20 @@
-// Streaming wrapper around OpenRouter's chat-completions endpoint.
+// Streaming wrapper around Cloudflare Workers AI's OpenAI-compatible endpoint.
 // Yields content-delta strings; emits a final marker via the returned promise's
-// resolution. Falls back to a heuristic generator when the API key pool is
+// resolution. Falls back to a heuristic generator when the credential pool is
 // empty OR fully cooled-down, so the UX works without any keys.
 
 import {
-  classifyOpenRouterResponse,
-  hasOpenRouterKeys,
-  keyCount,
+  classifyWorkersAiResponse,
+  credentialCount,
+  credentialKey,
+  hasWorkersAiCredentials,
   markFailed,
   parseRetryAfterMs,
-  pickKey,
-} from './openrouter-keys';
+  pickCredential,
+  type WorkersAiCredential,
+} from './workers-ai-keys';
 
-// Override for OpenAI-compatible proxies / gateways.
-const BASE_URL = (process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1').replace(/\/+$/, '');
+const DEFAULT_MODEL = '@cf/meta/llama-3.1-8b-instruct';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -32,23 +33,19 @@ export interface StreamOptions {
 
 export class AiUnavailableError extends Error {
   constructor(public reason: 'not_configured' | 'rate_limited', public retryAfterSec?: number) {
-    const model = process.env.OPENROUTER_MODEL ?? 'meta-llama/llama-3.3-70b-instruct:free';
-    const freeHint = model.endsWith(':free')
-      ? ' Free models are capped at 20 requests/min and 50/day per OpenRouter account (1000/day after $10 in credits). Keys from the same account share that quota.'
-      : '';
     super(
       reason === 'not_configured'
-        ? 'No AI provider configured. Set OPENROUTER_API_KEY (or a comma-separated OPENROUTER_API_KEYS pool) to generate fixes.'
+        ? 'No AI provider configured. Set WORKERS_AI_CREDENTIALS (accountId::token pairs, comma-separated) to generate fixes.'
         : retryAfterSec
-          ? `OpenRouter is rate-limited right now.${freeHint} Try again in ~${retryAfterSec}s, add keys from separate accounts, or switch to a paid model.`
-          : `Every OpenRouter key is rate-limited right now.${freeHint} Wait a minute, add more keys from separate accounts, or switch to a paid model.`
+          ? `Workers AI is rate-limited right now. Try again in ~${retryAfterSec}s or add credentials from separate Cloudflare accounts.`
+          : 'Every Workers AI credential is rate-limited right now. Wait a minute or add more accountId::token pairs from separate accounts.'
     );
     this.name = 'AiUnavailableError';
   }
 }
 
 export function isStreamingEnabled(): boolean {
-  return hasOpenRouterKeys();
+  return hasWorkersAiCredentials();
 }
 
 function sleep(ms: number): Promise<void> {
@@ -56,23 +53,31 @@ function sleep(ms: number): Promise<void> {
 }
 
 function maxAttempts(): number {
-  return Math.max(keyCount(), 1) * 3;
+  return Math.max(credentialCount(), 1) * 3;
+}
+
+function currentModelName(): string {
+  return process.env.WORKERS_AI_MODEL ?? DEFAULT_MODEL;
+}
+
+function chatUrl(accountId: string): string {
+  const override = process.env.WORKERS_AI_BASE_URL?.replace(/\/+$/, '');
+  if (override) return `${override}/chat/completions`;
+  return `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1/chat/completions`;
 }
 
 async function postChat(
-  apiKey: string,
+  cred: WorkersAiCredential,
   messages: ChatMessage[],
   opts: StreamOptions,
   stream: boolean,
 ): Promise<Response> {
-  const model = opts.model ?? process.env.OPENROUTER_MODEL ?? 'meta-llama/llama-3.3-70b-instruct:free';
-  return fetch(`${BASE_URL}/chat/completions`, {
+  const model = opts.model ?? currentModelName();
+  return fetch(chatUrl(cred.accountId), {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${cred.token}`,
       'Content-Type': 'application/json',
-      'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-      'X-Title': 'ServiceLens',
     },
     body: JSON.stringify({
       model,
@@ -85,28 +90,30 @@ async function postChat(
   });
 }
 
-type ChatAttempt = { ok: true; res: Response; apiKey: string } | { ok: false; reason: 'rate_limited'; retryAfterSec?: number };
+type ChatAttempt =
+  | { ok: true; res: Response; cred: WorkersAiCredential }
+  | { ok: false; reason: 'rate_limited'; retryAfterSec?: number };
 
 async function requestChat(messages: ChatMessage[], opts: StreamOptions, stream: boolean): Promise<ChatAttempt> {
   let lastRetryAfterSec: number | undefined;
   for (let attempt = 0; attempt < maxAttempts(); attempt++) {
-    const apiKey = pickKey();
-    if (!apiKey) break;
+    const cred = pickCredential();
+    if (!cred) break;
 
-    const res = await postChat(apiKey, messages, opts, stream);
-    if (res.ok) return { ok: true, res, apiKey };
+    const res = await postChat(cred, messages, opts, stream);
+    if (res.ok) return { ok: true, res, cred };
 
     const body = await res.text().catch(() => '');
     const retryAfterMs = parseRetryAfterMs(res.headers);
     if (retryAfterMs) lastRetryAfterSec = Math.max(1, Math.ceil(retryAfterMs / 1000));
-    const plan = classifyOpenRouterResponse(res.status, body, retryAfterMs);
+    const plan = classifyWorkersAiResponse(res.status, body, retryAfterMs);
 
     if (plan.action === 'fail') throw new Error(plan.message);
-    if (plan.markKeyFailed) {
-      markFailed(apiKey, plan.waitMs);
-      console.warn(`[openrouter] key cooled (${res.status}); rotating`);
+    if (plan.markCredentialFailed) {
+      markFailed(cred, plan.waitMs);
+      console.warn(`[workers-ai] credential cooled (${res.status}); rotating (${credentialKey(cred).slice(0, 12)}…)`);
     } else {
-      console.warn(`[openrouter] upstream ${res.status}; retrying in ${plan.waitMs}ms`);
+      console.warn(`[workers-ai] upstream ${res.status}; retrying in ${plan.waitMs}ms`);
     }
     await sleep(plan.waitMs);
   }
@@ -115,18 +122,18 @@ async function requestChat(messages: ChatMessage[], opts: StreamOptions, stream:
 }
 
 // Async iterable of content deltas. Caller is responsible for assembling them.
-// Rotates through the OPENROUTER_API_KEYS pool — on a rate-limit response we
-// cool that key down and retry the *same* request with the next available
-// key. When every key is exhausted we degrade to the heuristic stream.
+// Rotates through the WORKERS_AI_CREDENTIALS pool — on a rate-limit response we
+// cool that credential down and retry the *same* request with the next available
+// entry. When every credential is exhausted we degrade to the heuristic stream.
 export async function* streamChat(messages: ChatMessage[], opts: StreamOptions = {}): AsyncGenerator<string, void, unknown> {
-  if (!hasOpenRouterKeys()) {
+  if (!hasWorkersAiCredentials()) {
     yield* heuristicStream(messages);
     return;
   }
 
   const attempt = await requestChat(messages, opts, true);
   if (!attempt.ok) {
-    console.warn('[openrouter] all keys cooling down — falling back to heuristic');
+    console.warn('[workers-ai] all credentials cooling down — falling back to heuristic');
     yield* heuristicStream(messages);
     return;
   }
@@ -139,7 +146,7 @@ export async function* streamChat(messages: ChatMessage[], opts: StreamOptions =
     if (done) return;
     buffer += decoder.decode(value, { stream: true });
     let idx: number;
-    // OpenRouter follows the OpenAI SSE shape: lines starting with "data: ".
+    // Workers AI OpenAI-compatible endpoint follows the same SSE shape.
     while ((idx = buffer.indexOf('\n')) >= 0) {
       const line = buffer.slice(0, idx).trim();
       buffer = buffer.slice(idx + 1);
@@ -158,9 +165,9 @@ export async function* streamChat(messages: ChatMessage[], opts: StreamOptions =
 }
 
 // Non-streaming variant — accumulates and returns once. Used for the fix-PR
-// pass where we want a single JSON document. Same key-rotation semantics.
+// pass where we want a single JSON document. Same rotation semantics.
 export async function chatOnce(messages: ChatMessage[], opts: StreamOptions = {}): Promise<string> {
-  if (!hasOpenRouterKeys()) {
+  if (!hasWorkersAiCredentials()) {
     if (opts.strict) throw new AiUnavailableError('not_configured');
     return heuristicCompletion(messages, opts.responseFormat === 'json_object');
   }
@@ -168,7 +175,7 @@ export async function chatOnce(messages: ChatMessage[], opts: StreamOptions = {}
   const attempt = await requestChat(messages, opts, false);
   if (!attempt.ok) {
     if (opts.strict) throw new AiUnavailableError('rate_limited', attempt.retryAfterSec);
-    console.warn('[openrouter] all keys cooling down — falling back to heuristic');
+    console.warn('[workers-ai] all credentials cooling down — falling back to heuristic');
     return heuristicCompletion(messages, opts.responseFormat === 'json_object');
   }
 
@@ -178,7 +185,7 @@ export async function chatOnce(messages: ChatMessage[], opts: StreamOptions = {}
 
 // Small helper used to surface the model name into the UI / persistence.
 export function currentModel(): string {
-  return process.env.OPENROUTER_MODEL ?? 'meta-llama/llama-3.3-70b-instruct:free';
+  return currentModelName();
 }
 
 // ── Fallbacks (no API key) ───────────────────────────────────────────────────
@@ -214,7 +221,7 @@ function heuristicCompletion(messages: ChatMessage[], jsonShape: boolean): strin
         },
       ],
       prTitle: `Investigate ${service} incident`,
-      prBody: summary + '\n\n*(Heuristic fix suggestion — set OPENROUTER_API_KEY for AI-generated patches.)*',
+      prBody: summary + '\n\n*(Heuristic fix suggestion — set WORKERS_AI_CREDENTIALS for AI-generated patches.)*',
     });
   }
 
@@ -225,7 +232,7 @@ function heuristicCompletion(messages: ChatMessage[], jsonShape: boolean): strin
     `## Evidence`,
     `- Health window shows ${downCount} down/unreachable check(s).`,
     `- Logs collected at incident open contain ${errors} \`error\` entries.`,
-    `- This is the heuristic fallback summary — set \`OPENROUTER_API_KEY\` in \`.env\` to stream a real AI analysis with citations.`,
+    `- This is the heuristic fallback summary — set \`WORKERS_AI_CREDENTIALS\` in \`.env\` to stream a real AI analysis with citations.`,
     ``,
     `## Suggested next steps`,
     `1. Verify upstream dependencies are reachable from ${service}.`,

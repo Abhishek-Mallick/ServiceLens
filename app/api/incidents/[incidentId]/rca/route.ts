@@ -8,7 +8,7 @@ export const maxDuration = 300;
 
 // SSE: streams `delta` events (token chunks), an optional `error` event,
 // then a `done` event with the final assembled markdown. Hits OpenRouter
-// when OPENROUTER_API_KEY is set; otherwise the heuristic fallback streams a
+// when WORKERS_AI_CREDENTIALS is set; otherwise the heuristic fallback streams a
 // shorter analysis so the UX works without any keys.
 export async function POST(_req: Request, { params }: { params: { incidentId: string } }) {
   const session = await getServerSession(authOptions);

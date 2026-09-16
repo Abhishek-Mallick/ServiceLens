@@ -132,7 +132,7 @@ export function RcaPanel({
         ) : !streaming ? (
           <div className="text-sm text-muted-foreground">
             {canGenerate
-              ? <>No analysis yet. Click <em>Generate</em> to produce one. Without <code className="text-[10px]">OPENROUTER_API_KEYS</code>, a heuristic fallback is used.</>
+              ? <>No analysis yet. Click <em>Generate</em> to produce one. Without <code className="text-[10px]">WORKERS_AI_CREDENTIALS</code>, a heuristic fallback is used.</>
               : 'No analysis yet. An editor can generate one.'}
           </div>
         ) : (
