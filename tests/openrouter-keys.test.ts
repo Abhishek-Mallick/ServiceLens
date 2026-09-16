@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from 'vitest';
-import { __resetPool, pickKey, markFailed, isRateLimited, hasOpenRouterKeys, keyCount } from '../lib/openrouter-keys';
+import { __resetPool, pickKey, markFailed, isRateLimited, hasOpenRouterKeys, keyCount, classifyOpenRouterResponse, parseRetryAfterMs } from '../lib/openrouter-keys';
 
 describe('openrouter-keys/pool basics', () => {
   beforeEach(() => __resetPool(['k1', 'k2', 'k3']));
@@ -55,5 +55,46 @@ describe('openrouter-keys/isRateLimited', () => {
     expect(isRateLimited(400, 'invalid request body')).toBe(false);
     expect(isRateLimited(404, 'model not found')).toBe(false);
     expect(isRateLimited(200, 'all good here')).toBe(false);
+  });
+});
+
+describe('openrouter-keys/classifyOpenRouterResponse', () => {
+  it('retries 429 and marks the key failed', () => {
+    expect(classifyOpenRouterResponse(429, '', 5_000)).toEqual({
+      action: 'retry',
+      rotateKey: true,
+      waitMs: 5_000,
+      markKeyFailed: true,
+    });
+  });
+
+  it('retries generic 503 without marking the key failed', () => {
+    expect(classifyOpenRouterResponse(503, 'upstream unavailable', null)).toEqual({
+      action: 'retry',
+      rotateKey: false,
+      waitMs: 3_000,
+      markKeyFailed: false,
+    });
+  });
+
+  it('fails fast on client errors', () => {
+    expect(classifyOpenRouterResponse(404, 'model not found', null)).toEqual({
+      action: 'fail',
+      message: 'OpenRouter error 404: model not found',
+    });
+  });
+});
+
+describe('openrouter-keys/parseRetryAfterMs', () => {
+  it('parses seconds', () => {
+    const h = new Headers({ 'retry-after': '12' });
+    expect(parseRetryAfterMs(h)).toBe(12_000);
+  });
+
+  it('parses HTTP dates', () => {
+    const future = new Date(Date.now() + 4_000).toUTCString();
+    const h = new Headers({ 'retry-after': future });
+    expect(parseRetryAfterMs(h)).toBeGreaterThanOrEqual(3_000);
+    expect(parseRetryAfterMs(h)).toBeLessThanOrEqual(4_000);
   });
 });

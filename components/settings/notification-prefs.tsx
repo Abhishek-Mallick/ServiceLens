@@ -35,33 +35,33 @@ export function NotificationPrefs() {
     toast.success('Preferences saved');
   }
 
-  if (!pref) return <div className="text-sm text-mute">Loading…</div>;
+  if (!pref) return <div className="text-sm text-muted-foreground">Loading…</div>;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <Label>Email notifications</Label>
-          <p className="text-xs text-mute">Requires <code className="text-[10px]">RESEND_API_KEY</code> on the server. Free tier: 3,000/month.</p>
+          <p className="text-xs text-muted-foreground">Requires <code className="text-[10px]">RESEND_API_KEY</code> on the server. Free tier: 3,000/month.</p>
         </div>
         <input type="checkbox" checked={pref.emailEnabled} onChange={(e) => setPref({ ...pref, emailEnabled: e.target.checked })} />
       </div>
       <div className="flex items-center justify-between">
         <div>
           <Label>Slack notifications</Label>
-          <p className="text-xs text-mute">Webhook URL is configured per architecture.</p>
+          <p className="text-xs text-muted-foreground">Webhook URL is configured per architecture.</p>
         </div>
         <input type="checkbox" checked={pref.slackEnabled} onChange={(e) => setPref({ ...pref, slackEnabled: e.target.checked })} />
       </div>
       <div className="space-y-1.5">
         <Label>Minimum severity for email/Slack</Label>
         <select value={pref.minSeverity} onChange={(e) => setPref({ ...pref, minSeverity: e.target.value as 'info' | 'warning' | 'critical' })}
-          className="h-9 w-full rounded-md border border-hairline-strong bg-canvas px-3 text-sm">
+          className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm">
           <option value="info">info — every event</option>
           <option value="warning">warning — and above</option>
           <option value="critical">critical — only the loudest</option>
         </select>
-        <p className="text-xs text-mute">In-app feed always receives every notification regardless of this setting.</p>
+        <p className="text-xs text-muted-foreground">In-app feed always receives every notification regardless of this setting.</p>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">

@@ -12,15 +12,13 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const arch = await requireOwnedArchitecture(params.id, session.user.id);
   if (!arch) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  const [plan, runs] = await Promise.all([
-    loadContractPlan(params.id),
-    prisma.regressionRun.findMany({
-      where: { architectureId: params.id, simulated: false },
-      orderBy: { createdAt: 'desc' },
-      take: 15,
-      select: { id: true, status: true, totalSteps: true, passedSteps: true, failedSteps: true, triggeredBy: true, createdAt: true, completedAt: true },
-    }),
-  ]);
+  const plan = await loadContractPlan(params.id);
+  const runs = await prisma.regressionRun.findMany({
+    where: { architectureId: params.id, simulated: false },
+    orderBy: { createdAt: 'desc' },
+    take: 15,
+    select: { id: true, status: true, totalSteps: true, passedSteps: true, failedSteps: true, triggeredBy: true, createdAt: true, completedAt: true },
+  });
   return NextResponse.json({ plan, runs, intervalMin: arch.contractTestIntervalMin });
 }
 

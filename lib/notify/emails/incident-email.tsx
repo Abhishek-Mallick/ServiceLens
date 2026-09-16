@@ -5,15 +5,15 @@ import { colors, severityColor as sev } from '@/lib/design-tokens';
 
 // Email clients need inline values, so they come straight from the tokens.
 const palette = {
-  bg: colors['surface-card'],
-  card: colors['surface-elevated'],
-  ink: colors.ink,
-  muted: colors.charcoal,
-  hairline: colors['hairline-strong'],
+  bg: colors.card,
+  card: colors.cardElevated,
+  ink: colors.foreground,
+  muted: colors.mutedForeground,
+  hairline: colors.border,
   critical: sev.critical,
   warning: sev.warning,
   info: sev.info,
-  success: colors['accent-green'],
+  success: colors.emerald,
 } as const;
 
 function severityColor(sev: string) {

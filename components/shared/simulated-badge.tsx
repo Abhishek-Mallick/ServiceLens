@@ -6,7 +6,7 @@ export function SimulatedBadge({ className, label = 'Simulated' }: { className?:
     <span
       title="This data is generated for demo purposes — no real probe or run produced it."
       className={cn(
-        'inline-flex items-center gap-1 rounded-full border border-accent-yellow/30 bg-accent-yellow/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent-yellow',
+        'inline-flex items-center gap-1 rounded-full border border-yellow-500/30 bg-yellow-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-yellow-500',
         className
       )}
     >

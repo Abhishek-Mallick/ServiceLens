@@ -120,15 +120,15 @@ export default function NewArchitecturePage() {
 
   return (
     <div className="px-6 lg:px-10 py-10 max-w-4xl mx-auto">
-      <Link href="/architectures" className="text-[11px] uppercase tracking-[0.2em] text-ash inline-flex items-center gap-1 mb-6 hover:text-ink">
+      <Link href="/architectures" className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground inline-flex items-center gap-1 mb-6 hover:text-foreground">
         <ArrowLeft className="h-3 w-3" /> Architectures
       </Link>
 
-      <div className="mb-2 text-[11px] uppercase tracking-[0.25em] text-ash">Step {step} of 2</div>
-      <h1 className="font-display text-[44px] leading-[1.05] tracking-tight text-ink mb-2">
+      <div className="mb-2 text-[11px] uppercase tracking-[0.25em] text-muted-foreground">Step {step} of 2</div>
+      <h1 className="font-sans text-[44px] leading-[1.05] tracking-tight text-foreground mb-2">
         {step === 1 ? 'Name your mesh.' : 'Register your services.'}
       </h1>
-      <p className="text-mute text-[14px] max-w-xl mb-8">
+      <p className="text-muted-foreground text-[14px] max-w-xl mb-8">
         {step === 1
           ? 'An architecture groups the services you want to monitor together.'
           : 'Add each service’s GitHub repo and where it runs. We read the repo to map dependencies, probe the deployed URL every minute, and open incidents when it breaks.'}
@@ -160,10 +160,10 @@ export default function NewArchitecturePage() {
               <Card key={r.key}>
                 <CardContent className="pt-5 space-y-3">
                   <div className="flex items-center justify-between">
-                    <div className="text-[11px] uppercase tracking-[0.2em] text-ash flex items-center gap-2">
+                    <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
                       Service {i + 1}
-                      {done.has(r.key) && <Check className="h-3.5 w-3.5 text-accent-green" />}
-                      {rowErrors[r.key] && <X className="h-3.5 w-3.5 text-accent-red" />}
+                      {done.has(r.key) && <Check className="h-3.5 w-3.5 text-emerald-500" />}
+                      {rowErrors[r.key] && <X className="h-3.5 w-3.5 text-red-500" />}
                     </div>
                     {rows.length > 1 && (
                       <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => setRows((rs) => rs.filter((x) => x.key !== r.key))} aria-label={`Remove service ${i + 1}`}>
@@ -195,9 +195,9 @@ export default function NewArchitecturePage() {
                       </div>
                     </div>
                   </div>
-                  {rowErrors[r.key] && <p className="text-[12px] text-accent-red">{rowErrors[r.key]}</p>}
+                  {rowErrors[r.key] && <p className="text-[12px] text-red-500">{rowErrors[r.key]}</p>}
                   {!r.deployedUrl.trim() && r.repoUrl.trim() && (
-                    <p className="text-[12px] text-ash">Without a deployed URL this service is mapped but not health-checked.</p>
+                    <p className="text-[12px] text-muted-foreground">Without a deployed URL this service is mapped but not health-checked.</p>
                   )}
                 </CardContent>
               </Card>
@@ -212,7 +212,7 @@ export default function NewArchitecturePage() {
             <Button variant="outline" onClick={() => setStep(1)} disabled={busy}>Back</Button>
             <div className="flex items-center gap-3">
               {busy && (
-                <span className="text-[12px] text-mute">
+                <span className="text-[12px] text-muted-foreground">
                   {phase === 'creating' && 'Creating architecture…'}
                   {phase === 'registering' && `Registering services (${done.size}/${filled.length})…`}
                   {phase === 'analyzing' && 'Reading repos and mapping dependencies…'}

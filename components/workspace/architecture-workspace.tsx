@@ -102,12 +102,12 @@ export function ArchitectureWorkspace({ initial, canEdit, canOwn }: { initial: W
 
   return (
     <div className="grid h-full min-h-0 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px]">
-      <div className="relative flex min-h-[560px] flex-col border-r border-hairline">
-        <div className="flex flex-wrap items-center gap-3 border-b border-hairline px-4 py-2.5">
-          <div className="flex items-center gap-3 text-[12px] text-body">
+      <div className="relative flex min-h-[560px] flex-col border-r border-border/50">
+        <div className="flex flex-wrap items-center gap-3 border-b border-border/50 px-4 py-2.5">
+          <div className="flex items-center gap-3 text-[12px] text-foreground/90">
             {(['healthy', 'degraded', 'down', 'unknown'] as const).map((k) => (
               <span key={k} className="inline-flex items-center gap-1.5" title={k}>
-                <StatusDot status={k} /> <span className="tabular-nums">{data.counts[k]}</span> <span className="hidden text-mute xl:inline">{k}</span>
+                <StatusDot status={k} /> <span className="tabular-nums">{data.counts[k]}</span> <span className="hidden text-muted-foreground xl:inline">{k}</span>
               </span>
             ))}
           </div>
@@ -118,28 +118,28 @@ export function ArchitectureWorkspace({ initial, canEdit, canOwn }: { initial: W
                 type="button"
                 onClick={() => setFilter(f)}
                 aria-pressed={filter === f}
-                className={cn('rounded-full border px-2.5 py-1 text-[12px] transition-colors', filter === f ? 'border-ink bg-surface-elevated text-ink' : 'border-hairline text-mute hover:text-ink')}
+                className={cn('rounded-full border px-2.5 py-1 text-[12px] transition-colors', filter === f ? 'border-foreground bg-muted text-foreground' : 'border-border/50 text-muted-foreground hover:text-foreground')}
               >
                 {label}
               </button>
             ))}
           </div>
           <div className="relative ml-auto w-full max-w-[240px]">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-mute" />
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={onSearchKey} placeholder="Find a service…" aria-label="Find a service" className="h-8 pl-8 text-[13px]" />
           </div>
           {live && (
-            <span className="inline-flex items-center gap-1 text-[11px] text-accent-green"><Radio className="h-3 w-3 animate-pulse" /> live</span>
+            <span className="inline-flex items-center gap-1 text-[11px] text-emerald-500"><Radio className="h-3 w-3 animate-pulse" /> live</span>
           )}
         </div>
 
         <div className="relative min-h-0 flex-1">
           {empty ? (
             <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
-              <h2 className="font-display text-[36px] leading-none text-ink">Nothing here yet.</h2>
-              <p className="max-w-md text-[14px] text-mute">Register your services and ServiceLens maps how they call each other from the code, health-checks them, and pages the right person when one breaks.</p>
+              <h2 className="font-sans text-[36px] leading-none text-foreground">Nothing here yet.</h2>
+              <p className="max-w-md text-[14px] text-muted-foreground">Register your services and ServiceLens maps how they call each other from the code, health-checks them, and pages the right person when one breaks.</p>
               {canEdit && <AddServiceButton architectureId={architectureId} />}
-              <p className="text-[12px] text-mute">Onboarding many at once? Use an <Link href={`/architectures/${architectureId}/services`} className="text-link hover:underline">API key</Link> or point an agent at <code>/SKILL.md</code>.</p>
+              <p className="text-[12px] text-muted-foreground">Onboarding many at once? Use an <Link href={`/architectures/${architectureId}/services`} className="text-blue-500 hover:underline">API key</Link> or point an agent at <code>/SKILL.md</code>.</p>
             </div>
           ) : (
             <MeshGraph
@@ -157,7 +157,7 @@ export function ArchitectureWorkspace({ initial, canEdit, canOwn }: { initial: W
             />
           )}
           {!empty && (
-            <div className="pointer-events-none absolute bottom-3 left-14 z-10 rounded-md border border-hairline bg-surface-deep px-3 py-1.5">
+            <div className="pointer-events-none absolute bottom-3 left-14 z-10 rounded-md border border-border/50 bg-background px-3 py-1.5">
               <GraphLegend />
             </div>
           )}

@@ -56,7 +56,7 @@ export function IngestTokenPanel({ serviceId, canEdit }: { serviceId: string; ca
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex items-center gap-2">
-          <code className="flex-1 rounded-md border border-hairline bg-surface-elevated/40 px-2 py-1.5 text-xs font-mono break-all">{display}</code>
+          <code className="flex-1 rounded-md border border-border/50 bg-muted/40 px-2 py-1.5 text-xs font-mono break-all">{display}</code>
           <Button size="icon" variant="ghost" onClick={() => setReveal((r) => !r)} title={reveal ? 'Hide' : 'Reveal'}>
             {reveal ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
           </Button>
@@ -67,7 +67,7 @@ export function IngestTokenPanel({ serviceId, canEdit }: { serviceId: string; ca
             {busy === 'rotate' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
           </Button>
         </div>
-        <pre className="rounded-md border border-hairline bg-canvas/40 p-3 text-[11px] font-mono overflow-x-auto whitespace-pre">{example}</pre>
+        <pre className="rounded-md border border-border/50 bg-background/40 p-3 text-[11px] font-mono overflow-x-auto whitespace-pre">{example}</pre>
       </CardContent>
     </Card>
   );

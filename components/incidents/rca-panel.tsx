@@ -111,7 +111,7 @@ export function RcaPanel({
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex items-center gap-2">
           <Bot className="h-4 w-4 text-primary" /> AI root-cause analysis
-          {(streaming || waiting) && <Loader2 className="h-3.5 w-3.5 animate-spin text-mute" />}
+          {(streaming || waiting) && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
         </CardTitle>
         <CardDescription className="flex items-center justify-between gap-2">
           <span>{model ? `model: ${model}` : 'Streams citations from the captured log snapshot and health window.'}</span>
@@ -122,21 +122,21 @@ export function RcaPanel({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {error && <div className="text-xs text-accent-red mb-2">{error}</div>}
+        {error && <div className="text-xs text-red-500 mb-2">{error}</div>}
         {text ? (
           <div className="prose prose-invert max-w-none text-sm">
-            <pre className="whitespace-pre-wrap font-sans leading-relaxed">{text}{streaming && <span className="inline-block w-2 h-4 bg-ink/60 align-text-bottom animate-pulse ml-0.5" />}</pre>
+            <pre className="whitespace-pre-wrap font-sans leading-relaxed">{text}{streaming && <span className="inline-block w-2 h-4 bg-foreground/60 align-text-bottom animate-pulse ml-0.5" />}</pre>
           </div>
         ) : waiting ? (
-          <div className="text-sm text-mute">Analysis started automatically when the incident opened — it will appear here in a few seconds.</div>
+          <div className="text-sm text-muted-foreground">Analysis started automatically when the incident opened — it will appear here in a few seconds.</div>
         ) : !streaming ? (
-          <div className="text-sm text-mute">
+          <div className="text-sm text-muted-foreground">
             {canGenerate
               ? <>No analysis yet. Click <em>Generate</em> to produce one. Without <code className="text-[10px]">OPENROUTER_API_KEYS</code>, a heuristic fallback is used.</>
               : 'No analysis yet. An editor can generate one.'}
           </div>
         ) : (
-          <div className="text-sm text-mute">Streaming…</div>
+          <div className="text-sm text-muted-foreground">Streaming…</div>
         )}
       </CardContent>
     </Card>

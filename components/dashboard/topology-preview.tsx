@@ -31,10 +31,10 @@ export function TopologyPreview({
   useEffect(() => setMounted(true), []);
 
   return (
-    <div className="relative overflow-hidden rounded-lg border border-hairline-strong bg-surface-card">
-      <div className="flex items-center justify-between border-b border-hairline px-4 py-2.5">
-        <div className="text-[13px] text-ink">{architectureName}</div>
-        <Link href={`/architectures/${architectureId}`} className="text-[12px] text-link hover:underline">Open workspace</Link>
+    <div className="relative overflow-hidden rounded-lg border border-border bg-card">
+      <div className="flex items-center justify-between border-b border-border/50 px-4 py-2.5">
+        <div className="text-[13px] text-foreground">{architectureName}</div>
+        <Link href={`/architectures/${architectureId}`} className="text-[12px] text-blue-500 hover:underline">Open workspace</Link>
       </div>
       <div style={{ height }}>
         {mounted && <MeshGraph graph={graph} services={services} />}

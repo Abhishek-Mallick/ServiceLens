@@ -3,7 +3,7 @@ import { statusColor, statusOf } from '@/lib/design-tokens';
 // One bar per check (oldest → newest): height is latency, color is status.
 // Down checks (no latency) render full-height so outages stand out.
 export function HealthBars({ points }: { points: Array<{ status: string; rt: number | null; at: string }> }) {
-  if (points.length === 0) return <div className="text-[12px] text-mute">No checks yet.</div>;
+  if (points.length === 0) return <div className="text-[12px] text-muted-foreground">No checks yet.</div>;
   const max = Math.max(...points.map((p) => p.rt ?? 0), 1);
   const w = 300;
   const h = 44;

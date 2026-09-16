@@ -83,7 +83,7 @@ export default async function IncidentDetailPage({ params }: { params: { id: str
 
   return (
     <div className="p-6 lg:p-8 space-y-6 max-w-5xl">
-      <Link href={`/architectures/${params.id}/incidents`} className="text-xs text-mute inline-flex items-center gap-1 hover:text-ink">
+      <Link href={`/architectures/${params.id}/incidents`} className="text-xs text-muted-foreground inline-flex items-center gap-1 hover:text-foreground">
         <ArrowLeft className="h-3 w-3" /> All incidents
       </Link>
 
@@ -93,10 +93,10 @@ export default async function IncidentDetailPage({ params }: { params: { id: str
             <SeverityBadge severity={incident.severity} />
             <StatusBadge status={incident.status} />
             {incident.simulated && <SimulatedBadge />}
-            <span className="text-[10px] uppercase tracking-wide text-mute">source: {incident.source}</span>
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">source: {incident.source}</span>
           </div>
           <h1 className="text-2xl font-semibold mt-2">{incident.title}</h1>
-          {incident.summary && <p className="text-sm text-mute mt-1 max-w-3xl">{incident.summary}</p>}
+          {incident.summary && <p className="text-sm text-muted-foreground mt-1 max-w-3xl">{incident.summary}</p>}
         </div>
       </div>
 
@@ -106,25 +106,25 @@ export default async function IncidentDetailPage({ params }: { params: { id: str
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <ScrollText className="h-4 w-4 text-accent-yellow" /> Correlated logs (snapshot at open)
+                  <ScrollText className="h-4 w-4 text-yellow-500" /> Correlated logs (snapshot at open)
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="rounded-md border border-hairline bg-canvas/40 font-mono text-[12px] max-h-72 overflow-y-auto">
+                <div className="rounded-md border border-border/50 bg-background/40 font-mono text-[12px] max-h-72 overflow-y-auto">
                   {snapshot.logs.map((l) => (
-                    <div key={l.id} className="grid grid-cols-[80px_50px_120px_1fr] gap-2 px-3 py-1 border-b border-hairline">
-                      <span className="text-mute tabular-nums">{new Date(l.at).toLocaleTimeString()}</span>
+                    <div key={l.id} className="grid grid-cols-[80px_50px_120px_1fr] gap-2 px-3 py-1 border-b border-border/50">
+                      <span className="text-muted-foreground tabular-nums">{new Date(l.at).toLocaleTimeString()}</span>
                       <span className={cn('uppercase', {
-                        'text-accent-red': l.level === 'error',
-                        'text-accent-yellow': l.level === 'warn',
-                        'text-accent-blue': l.level === 'info',
+                        'text-red-500': l.level === 'error',
+                        'text-yellow-500': l.level === 'warn',
+                        'text-blue-500': l.level === 'info',
                       })}>{l.level}</span>
-                      <span className="text-mute truncate">{l.service}</span>
+                      <span className="text-muted-foreground truncate">{l.service}</span>
                       <span className="break-words">{l.message}</span>
                     </div>
                   ))}
                 </div>
-                <div className="text-[10px] text-mute mt-2">{snapshot.logs.length} warn/error entries from {snapshot.services?.length ?? 0} service(s) · captured at incident open</div>
+                <div className="text-[10px] text-muted-foreground mt-2">{snapshot.logs.length} warn/error entries from {snapshot.services?.length ?? 0} service(s) · captured at incident open</div>
               </CardContent>
             </Card>
           )}
@@ -135,7 +135,7 @@ export default async function IncidentDetailPage({ params }: { params: { id: str
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-base">Timeline</CardTitle></CardHeader>
             <CardContent className="pt-0">
-              <ol className="relative border-l border-hairline ml-2 space-y-4">
+              <ol className="relative border-l border-border/50 ml-2 space-y-4">
                 {incident.events.map((ev) => {
                   const Icon = eventIcon[ev.type] ?? AlertCircle;
                   const payload = ev.payload ? parseJson<Record<string, unknown>>(ev.payload, {}) : null;
@@ -144,13 +144,13 @@ export default async function IncidentDetailPage({ params }: { params: { id: str
                   const resolution = payload && typeof payload.resolution === 'string' ? payload.resolution : null;
                   return (
                     <li key={ev.id} className="ml-4">
-                      <span className="absolute -left-[7px] flex h-3.5 w-3.5 items-center justify-center rounded-full bg-canvas border border-hairline-strong">
+                      <span className="absolute -left-[7px] flex h-3.5 w-3.5 items-center justify-center rounded-full bg-background border border-border">
                         <Icon className="h-2.5 w-2.5" />
                       </span>
-                      <div className="text-xs text-mute">{formatRelative(ev.at)} {ev.byUser && <>· {ev.byUser.name ?? ev.byUser.email}</>}</div>
+                      <div className="text-xs text-muted-foreground">{formatRelative(ev.at)} {ev.byUser && <>· {ev.byUser.name ?? ev.byUser.email}</>}</div>
                       <div className="text-sm capitalize">{ev.type.replace(/_/g, ' ')}{reason ? ` (${reason})` : ''}</div>
-                      {text && <div className="text-sm text-mute mt-1 rounded-md border border-hairline p-2 bg-surface-elevated/20">{text}</div>}
-                      {resolution && <div className="text-sm text-mute mt-1 rounded-md border border-hairline p-2 bg-surface-elevated/20"><span className="text-[10px] uppercase tracking-wide text-mute">Resolution</span><br />{resolution}</div>}
+                      {text && <div className="text-sm text-muted-foreground mt-1 rounded-md border border-border/50 p-2 bg-muted/20">{text}</div>}
+                      {resolution && <div className="text-sm text-muted-foreground mt-1 rounded-md border border-border/50 p-2 bg-muted/20"><span className="text-[10px] uppercase tracking-wide text-muted-foreground">Resolution</span><br />{resolution}</div>}
                     </li>
                   );
                 })}
@@ -184,11 +184,11 @@ export default async function IncidentDetailPage({ params }: { params: { id: str
             )}
             {incident.oncall && (
               <Field label="On-call paged">
-                {incident.oncall.name} <span className="text-mute">&lt;{incident.oncall.email}&gt;</span>
+                {incident.oncall.name} <span className="text-muted-foreground">&lt;{incident.oncall.email}&gt;</span>
                 {incident.oncall.escalatedAt
-                  ? <div className="text-[12px] text-accent-yellow mt-0.5">Escalated to {incident.oncall.escalationEmail} {formatRelative(incident.oncall.escalatedAt)}</div>
+                  ? <div className="text-[12px] text-yellow-500 mt-0.5">Escalated to {incident.oncall.escalationEmail} {formatRelative(incident.oncall.escalatedAt)}</div>
                   : incident.oncall.escalationEmail && incident.status === 'open'
-                    ? <div className="text-[12px] text-mute mt-0.5">Escalates to {incident.oncall.escalationEmail} if not acknowledged</div>
+                    ? <div className="text-[12px] text-muted-foreground mt-0.5">Escalates to {incident.oncall.escalationEmail} if not acknowledged</div>
                     : null}
               </Field>
             )}
@@ -196,8 +196,8 @@ export default async function IncidentDetailPage({ params }: { params: { id: str
             {incident.resolution && <Field label="Resolution">{incident.resolution}</Field>}
             {!incident.resolution && incident.resolutionSummary && (
               <Field label="What happened (recorded automatically)">
-                <p className="text-body leading-relaxed" data-testid="resolution-summary">{incident.resolutionSummary}</p>
-                <p className="text-[11px] text-ash mt-1">Used as runbook memory for future incidents on this service. Add a note when resolving to replace it.</p>
+                <p className="text-foreground/90 leading-relaxed" data-testid="resolution-summary">{incident.resolutionSummary}</p>
+                <p className="text-[11px] text-muted-foreground mt-1">Used as runbook memory for future incidents on this service. Add a note when resolving to replace it.</p>
               </Field>
             )}
           </CardContent>
@@ -210,7 +210,7 @@ export default async function IncidentDetailPage({ params }: { params: { id: str
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="text-[10px] uppercase tracking-wide text-mute">{label}</div>
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className="mt-0.5">{children}</div>
     </div>
   );

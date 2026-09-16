@@ -98,22 +98,22 @@ const ServiceCard = memo(function ServiceCard({ data }: NodeProps<NodeData>) {
   return (
     <div
       className={cn(
-        'w-[220px] rounded-lg border bg-surface-card px-3 py-2.5 transition-[opacity,border-color] duration-200',
-        data.selected ? 'border-ink' : 'border-hairline-strong hover:border-charcoal',
+        'w-[220px] rounded-lg border bg-card px-3 py-2.5 transition-[opacity,border-color] duration-200',
+        data.selected ? 'border-foreground' : 'border-border hover:border-foreground/80',
         data.dimmed && 'opacity-25'
       )}
     >
-      <Handle type="target" position={Position.Left} className="!h-1.5 !w-1.5 !border-0 !bg-stone" />
+      <Handle type="target" position={Position.Left} className="!h-1.5 !w-1.5 !border-0 !bg-muted" />
       <div className="flex items-center gap-2">
         <StatusDot status={data.health} pulse={data.pulse} />
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[13px] font-medium leading-tight text-ink">{data.label}</div>
-          <div className="truncate text-[11px] text-mute">{data.framework ?? data.language ?? '—'}</div>
+          <div className="truncate text-[13px] font-medium leading-tight text-foreground">{data.label}</div>
+          <div className="truncate text-[11px] text-muted-foreground">{data.framework ?? data.language ?? '—'}</div>
         </div>
         {data.incidentSeverity && <SeverityPill severity={data.incidentSeverity} label="incident" />}
       </div>
       <div className="mt-1.5 text-[11px] capitalize" style={{ color: statusColor[s] }}>{s}</div>
-      <Handle type="source" position={Position.Right} className="!h-1.5 !w-1.5 !border-0 !bg-stone" />
+      <Handle type="source" position={Position.Right} className="!h-1.5 !w-1.5 !border-0 !bg-muted" />
     </div>
   );
 });
@@ -121,11 +121,11 @@ const ServiceCard = memo(function ServiceCard({ data }: NodeProps<NodeData>) {
 const InfraCard = memo(function InfraCard({ data, type }: NodeProps<NodeData>) {
   const Icon = type === 'database' ? Database : Radio;
   return (
-    <div className={cn('flex w-[180px] items-center gap-2 rounded-lg border border-hairline bg-surface-deep px-3 py-2', data.dimmed && 'opacity-25')}>
-      <Handle type="target" position={Position.Left} className="!h-1.5 !w-1.5 !border-0 !bg-stone" />
-      <Icon className="h-3.5 w-3.5 text-mute" />
-      <span className="truncate text-[12px] text-body">{data.label}</span>
-      <Handle type="source" position={Position.Right} className="!h-1.5 !w-1.5 !border-0 !bg-stone" />
+    <div className={cn('flex w-[180px] items-center gap-2 rounded-lg border border-border/50 bg-background px-3 py-2', data.dimmed && 'opacity-25')}>
+      <Handle type="target" position={Position.Left} className="!h-1.5 !w-1.5 !border-0 !bg-muted" />
+      <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+      <span className="truncate text-[12px] text-foreground/90">{data.label}</span>
+      <Handle type="source" position={Position.Right} className="!h-1.5 !w-1.5 !border-0 !bg-muted" />
     </div>
   );
 });
@@ -145,7 +145,7 @@ function MeshEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targ
         path={path}
         interactionWidth={16}
         style={{
-          stroke: d.selected ? colors.ink : stroke,
+          stroke: d.selected ? colors.foreground : stroke,
           strokeWidth: emphasis ? 2.75 : 1.5,
           opacity: d.dimmed ? 0.12 : d.ambiguous ? 0.6 : 0.9,
           strokeDasharray: d.ambiguous ? '6 4' : undefined,
@@ -154,7 +154,7 @@ function MeshEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targ
       {label && d.showLabel && (
         <EdgeLabelRenderer>
           <div
-            className="nodrag nopan pointer-events-none absolute rounded-sm border border-hairline-strong bg-surface-deep px-1.5 py-0.5 font-mono text-[10px] text-mute"
+            className="nodrag nopan pointer-events-none absolute rounded-sm border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground"
             style={{ transform: `translate(-50%, -50%) translate(${lx}px, ${ly}px)`, opacity: d.dimmed ? 0.2 : 1 }}
           >
             {label}
@@ -300,20 +300,20 @@ function MeshGraphInner({
       maxZoom={2}
       proOptions={{ hideAttribution: true }}
     >
-      <Background variant={BackgroundVariant.Dots} gap={22} size={1} color={colors['hairline-strong']} />
+      <Background variant={BackgroundVariant.Dots} gap={22} size={1} color={colors.border} />
       {interactive && (
         <>
           <Controls
             showInteractive={false}
-            className="!rounded-md !border !border-hairline-strong !bg-surface-elevated [&>button]:!border-hairline [&>button]:!bg-surface-elevated [&>button]:!fill-ink hover:[&>button]:!bg-surface-card"
+            className="!rounded-md !border !border-border !bg-muted [&>button]:!border-border/50 [&>button]:!bg-muted [&>button]:!fill-foreground hover:[&>button]:!bg-card"
           />
           <MiniMap
             pannable
             zoomable
             nodeStrokeWidth={0}
-            nodeColor={(n) => (n.type === 'service' ? statusColor[statusOf((n.data as NodeData).health)] : colors.stone)}
+            nodeColor={(n) => (n.type === 'service' ? statusColor[statusOf((n.data as NodeData).health)] : colors.slate)}
             maskColor={derived.minimapMask}
-            className="!rounded-md !border !border-hairline-strong !bg-surface-deep"
+            className="!rounded-md !border !border-border !bg-background"
           />
         </>
       )}
@@ -324,11 +324,11 @@ function MeshGraphInner({
 export function GraphLegend() {
   const items: Array<[string, string]> = [['REST', edgeColor.rest], ['Event', edgeColor.event], ['gRPC', edgeColor.grpc], ['Database', edgeColor.database]];
   return (
-    <div className="flex flex-wrap items-center gap-3 text-[11px] text-mute">
+    <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
       {items.map(([label, c]) => (
         <span key={label} className="inline-flex items-center gap-1.5"><span className="h-0.5 w-4 rounded" style={{ background: c }} />{label}</span>
       ))}
-      <span className="inline-flex items-center gap-1.5"><span className="h-0 w-4 border-t border-dashed border-mute" />unconfirmed</span>
+      <span className="inline-flex items-center gap-1.5"><span className="h-0 w-4 border-t border-dashed border-muted-foreground" />unconfirmed</span>
     </div>
   );
 }

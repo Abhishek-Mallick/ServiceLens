@@ -20,7 +20,7 @@ const ACTION_LABEL: Record<string, string> = {
   ignore: 'external (ignored)',
 };
 
-const selectCls = 'h-8 rounded-md border border-hairline-strong bg-canvas px-2 text-[12px]';
+const selectCls = 'h-8 rounded-md border border-border bg-background px-2 text-[12px]';
 
 export function DependencyReview({
   architectureId,
@@ -71,7 +71,7 @@ export function DependencyReview({
     router.refresh();
   }
 
-  const where = (file: string | null, line: number | null) => (file ? <span className="font-mono text-[11px] text-mute"> · {file}{line ? `:${line}` : ''}</span> : null);
+  const where = (file: string | null, line: number | null) => (file ? <span className="font-mono text-[11px] text-muted-foreground"> · {file}{line ? `:${line}` : ''}</span> : null);
   const nothing = ambiguous.length === 0 && unresolved.length === 0;
 
   return (
@@ -84,15 +84,15 @@ export function DependencyReview({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
-        {nothing && <div className="text-sm text-mute">Every dependency found in the code is resolved.</div>}
+        {nothing && <div className="text-sm text-muted-foreground">Every dependency found in the code is resolved.</div>}
 
         {ambiguous.length > 0 && (
           <section className="space-y-2">
-            <div className="text-[11px] uppercase tracking-[0.15em] text-accent-yellow">Ambiguous ({ambiguous.length})</div>
+            <div className="text-[11px] uppercase tracking-[0.15em] text-yellow-500">Ambiguous ({ambiguous.length})</div>
             {ambiguous.map((a) => {
               const key = `amb-${a.from.id}-${a.envVar}`;
               return (
-                <div key={key} className="rounded-md border border-hairline p-3 space-y-2">
+                <div key={key} className="rounded-md border border-border/50 p-3 space-y-2">
                   <div className="text-sm"><strong>{a.from.name}</strong> reads <code>{a.envVar}</code>{where(a.file, a.line)}. That matches more than one service:</div>
                   {canEdit ? (
                     <div className="flex flex-wrap gap-2">
@@ -107,7 +107,7 @@ export function DependencyReview({
                       {busy === key && <Loader2 className="h-4 w-4 animate-spin self-center" />}
                     </div>
                   ) : (
-                    <div className="text-[12px] text-mute">Candidates: {a.candidates.map((c) => c.name).join(', ')}</div>
+                    <div className="text-[12px] text-muted-foreground">Candidates: {a.candidates.map((c) => c.name).join(', ')}</div>
                   )}
                 </div>
               );
@@ -117,15 +117,15 @@ export function DependencyReview({
 
         {unresolved.length > 0 && (
           <section className="space-y-2">
-            <div className="text-[11px] uppercase tracking-[0.15em] text-mute">Not matched to a service ({unresolved.length})</div>
+            <div className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground">Not matched to a service ({unresolved.length})</div>
             {unresolved.map((u) => {
               const key = `unr-${u.from.id}-${u.envVar}`;
               const options = services.filter((s) => s.id !== u.from.id);
               return (
-                <div key={key} className="rounded-md border border-hairline p-3 space-y-2">
+                <div key={key} className="rounded-md border border-border/50 p-3 space-y-2">
                   <div className="text-sm">
                     <strong>{u.from.name}</strong> calls <code>{u.envVar}</code>
-                    {u.urlExample && <span className="text-mute"> ({u.urlExample})</span>}
+                    {u.urlExample && <span className="text-muted-foreground"> ({u.urlExample})</span>}
                     {where(u.file, u.line)}. No onboarded service matches it.
                   </div>
                   {canEdit && (
@@ -140,7 +140,7 @@ export function DependencyReview({
                       <Button size="sm" variant="ghost" disabled={busy !== null} onClick={() => decide(key, { fromServiceId: u.from.id, envVar: u.envVar, action: 'ignore' })}>
                         External, ignore
                       </Button>
-                      <span className="text-[11px] text-mute">or register the missing service with <em>Add service</em>, and it will match automatically.</span>
+                      <span className="text-[11px] text-muted-foreground">or register the missing service with <em>Add service</em>, and it will match automatically.</span>
                     </div>
                   )}
                 </div>
@@ -151,13 +151,13 @@ export function DependencyReview({
 
         {canEdit && services.length > 1 && (
           <section className="space-y-2">
-            <div className="text-[11px] uppercase tracking-[0.15em] text-mute">Add a dependency by hand</div>
+            <div className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground">Add a dependency by hand</div>
             <div className="flex flex-wrap items-center gap-2">
               <select className={selectCls} value={manual.from} onChange={(e) => setManual({ ...manual, from: e.target.value })} aria-label="From service">
                 <option value="">From…</option>
                 {services.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
-              <span className="text-mute text-sm">calls</span>
+              <span className="text-muted-foreground text-sm">calls</span>
               <select className={selectCls} value={manual.to} onChange={(e) => setManual({ ...manual, to: e.target.value })} aria-label="To service">
                 <option value="">To…</option>
                 {services.filter((s) => s.id !== manual.from).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -172,9 +172,9 @@ export function DependencyReview({
 
         {decisions.length > 0 && (
           <section className="space-y-1.5">
-            <div className="text-[11px] uppercase tracking-[0.15em] text-mute">Decisions</div>
+            <div className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground">Decisions</div>
             {decisions.map((d) => (
-              <div key={d.id} className="flex items-center justify-between gap-2 text-[12px] rounded-md border border-hairline px-3 py-1.5">
+              <div key={d.id} className="flex items-center justify-between gap-2 text-[12px] rounded-md border border-border/50 px-3 py-1.5">
                 <span>
                   <strong>{d.from.name}</strong>{d.envVar && <> · <code>{d.envVar}</code></>} {ACTION_LABEL[d.action] ?? d.action} {d.to && <strong>{d.to.name}</strong>}
                 </span>

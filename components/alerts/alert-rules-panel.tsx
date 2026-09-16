@@ -134,9 +134,7 @@ export function AlertRulesPanel({ architectureId, services, initialRules, canEdi
       <CardHeader className="flex flex-row items-center justify-between gap-2">
         <CardTitle className="text-base">Alert rules</CardTitle>
         {canEdit && <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm"><Plus className="h-3.5 w-3.5" />New rule</Button>
-          </DialogTrigger>
+          <DialogTrigger render={<Button size="sm" />}><Plus className="h-3.5 w-3.5" />New rule</DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle>New alert rule</DialogTitle></DialogHeader>
             <form onSubmit={add} className="space-y-3">
@@ -148,7 +146,7 @@ export function AlertRulesPanel({ architectureId, services, initialRules, canEdi
                 <div className="space-y-1.5">
                   <Label>Scope (service)</Label>
                   <select value={form.serviceId} onChange={(e) => setForm({ ...form, serviceId: e.target.value })}
-                    className="h-9 w-full rounded-md border border-hairline-strong bg-canvas px-3 text-sm">
+                    className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm">
                     <option value="">All services</option>
                     {services.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
@@ -156,7 +154,7 @@ export function AlertRulesPanel({ architectureId, services, initialRules, canEdi
                 <div className="space-y-1.5">
                   <Label>Severity</Label>
                   <select value={form.severity} onChange={(e) => setForm({ ...form, severity: e.target.value as 'info' | 'warning' | 'critical' })}
-                    className="h-9 w-full rounded-md border border-hairline-strong bg-canvas px-3 text-sm">
+                    className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm">
                     <option value="info">info</option>
                     <option value="warning">warning</option>
                     <option value="critical">critical</option>
@@ -166,7 +164,7 @@ export function AlertRulesPanel({ architectureId, services, initialRules, canEdi
               <div className="space-y-1.5">
                 <Label>Condition</Label>
                 <select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value as Kind })}
-                  className="h-9 w-full rounded-md border border-hairline-strong bg-canvas px-3 text-sm">
+                  className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm">
                   <option value="status_eq">Service status equals…</option>
                   <option value="p95_latency_gt">p95 latency over window {'>'} threshold</option>
                   <option value="error_rate_gt">Error rate {'>'} threshold</option>
@@ -175,7 +173,7 @@ export function AlertRulesPanel({ architectureId, services, initialRules, canEdi
                 </select>
                 {form.kind === 'status_eq' && (
                   <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as 'down' | 'degraded' | 'healthy' })}
-                    className="h-9 w-full rounded-md border border-hairline-strong bg-canvas px-3 text-sm mt-2">
+                    className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm mt-2">
                     <option value="down">down</option>
                     <option value="degraded">degraded</option>
                   </select>
@@ -209,7 +207,7 @@ export function AlertRulesPanel({ architectureId, services, initialRules, canEdi
                   <label className="flex items-center gap-2"><input type="checkbox" checked={form.emailEnabled} onChange={(e) => setForm({ ...form, emailEnabled: e.target.checked })} />Email</label>
                   <label className="flex items-center gap-2"><input type="checkbox" checked={form.slackEnabled} onChange={(e) => setForm({ ...form, slackEnabled: e.target.checked })} />Slack</label>
                 </div>
-                <div className="text-[10px] text-mute">Email goes to owners, editors and the on-call engineer; Slack uses the webhook under Notification routing.</div>
+                <div className="text-[10px] text-muted-foreground">Email goes to owners, editors and the on-call engineer; Slack uses the webhook under Notification routing.</div>
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
@@ -220,19 +218,19 @@ export function AlertRulesPanel({ architectureId, services, initialRules, canEdi
         </Dialog>}
       </CardHeader>
       <CardContent className="pt-0 space-y-2">
-        {rules.length === 0 && <div className="text-sm text-mute">{canEdit ? 'No rules yet. Create one to start opening incidents automatically.' : 'No rules yet.'}</div>}
+        {rules.length === 0 && <div className="text-sm text-muted-foreground">{canEdit ? 'No rules yet. Create one to start opening incidents automatically.' : 'No rules yet.'}</div>}
         {rules.map((r) => (
-          <div key={r.id} className="flex items-center justify-between gap-3 rounded-md border border-hairline p-3">
+          <div key={r.id} className="flex items-center justify-between gap-3 rounded-md border border-border/50 p-3">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <SeverityBadge severity={r.severity} />
                 <span className="text-sm font-medium truncate">{r.name}</span>
-                {!r.enabled && <span className="text-[10px] uppercase tracking-wide text-mute">disabled</span>}
+                {!r.enabled && <span className="text-[10px] uppercase tracking-wide text-muted-foreground">disabled</span>}
               </div>
-              <div className="text-xs text-mute mt-1">
+              <div className="text-xs text-muted-foreground mt-1">
                 {r.service ? r.service.name : 'all services'} · {summarizeCondition(r.condition)} · window {r.windowSec}s · for {r.forDurationSec}s
               </div>
-              <div className="text-[10px] text-mute mt-0.5">Updated {formatRelative(r.updatedAt)}</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">Updated {formatRelative(r.updatedAt)}</div>
             </div>
             {canEdit && (
               <div className="flex items-center gap-1">
@@ -240,7 +238,7 @@ export function AlertRulesPanel({ architectureId, services, initialRules, canEdi
                   {r.enabled ? 'Disable' : 'Enable'}
                 </Button>
                 <Button size="icon" variant="ghost" onClick={() => remove(r.id)} disabled={busy === r.id} title="Delete">
-                  <Trash2 className="h-3.5 w-3.5 text-accent-red" />
+                  <Trash2 className="h-3.5 w-3.5 text-red-500" />
                 </Button>
               </div>
             )}

@@ -121,18 +121,18 @@ export function HealthDashboard({ architectureId, initialServices, canEdit }: { 
     <div className="p-6 lg:p-8 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <Activity className="h-5 w-5 text-accent-green" />
+          <Activity className="h-5 w-5 text-emerald-500" />
           <div>
             <div className="text-sm">
-              <span className="font-semibold text-accent-green">{totals.healthy}</span>
-              <span className="text-mute">/{services.length} services healthy</span>
-              {totals.degraded > 0 && <span className="ml-2 text-accent-orange">· {totals.degraded} degraded</span>}
-              {totals.down > 0 && <span className="ml-2 text-accent-red">· {totals.down} down</span>}
+              <span className="font-semibold text-emerald-500">{totals.healthy}</span>
+              <span className="text-muted-foreground">/{services.length} services healthy</span>
+              {totals.degraded > 0 && <span className="ml-2 text-orange-500">· {totals.degraded} degraded</span>}
+              {totals.down > 0 && <span className="ml-2 text-red-500">· {totals.down} down</span>}
             </div>
-            <div className="text-xs text-mute flex items-center gap-2">
+            <div className="text-xs text-muted-foreground flex items-center gap-2">
               Last checked: {latestCheck ? formatRelative(new Date(latestCheck)) : 'never'} · checked server-side every minute
               {live && (
-                <span className="inline-flex items-center gap-1 text-accent-green">
+                <span className="inline-flex items-center gap-1 text-emerald-500">
                   <Radio className="h-3 w-3 animate-pulse" /> live
                 </span>
               )}

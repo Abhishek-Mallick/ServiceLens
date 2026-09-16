@@ -74,9 +74,7 @@ export function AddServiceButton({ architectureId }: { architectureId: string })
         Re-analyze
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <Button size="sm"><Plus className="h-3.5 w-3.5" /> Add service</Button>
-        </DialogTrigger>
+        <DialogTrigger render={<Button size="sm" />}><Plus className="h-3.5 w-3.5" /> Add service</DialogTrigger>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Register a service</DialogTitle>

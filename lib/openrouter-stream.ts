@@ -3,7 +3,14 @@
 // resolution. Falls back to a heuristic generator when the API key pool is
 // empty OR fully cooled-down, so the UX works without any keys.
 
-import { pickKey, markFailed, isRateLimited, hasOpenRouterKeys } from './openrouter-keys';
+import {
+  classifyOpenRouterResponse,
+  hasOpenRouterKeys,
+  keyCount,
+  markFailed,
+  parseRetryAfterMs,
+  pickKey,
+} from './openrouter-keys';
 
 // Override for OpenAI-compatible proxies / gateways.
 const BASE_URL = (process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1').replace(/\/+$/, '');
@@ -24,11 +31,17 @@ export interface StreamOptions {
 }
 
 export class AiUnavailableError extends Error {
-  constructor(public reason: 'not_configured' | 'rate_limited') {
+  constructor(public reason: 'not_configured' | 'rate_limited', public retryAfterSec?: number) {
+    const model = process.env.OPENROUTER_MODEL ?? 'meta-llama/llama-3.3-70b-instruct:free';
+    const freeHint = model.endsWith(':free')
+      ? ' Free models are capped at 20 requests/min and 50/day per OpenRouter account (1000/day after $10 in credits). Keys from the same account share that quota.'
+      : '';
     super(
       reason === 'not_configured'
         ? 'No AI provider configured. Set OPENROUTER_API_KEY (or a comma-separated OPENROUTER_API_KEYS pool) to generate fixes.'
-        : 'Every OpenRouter key is rate-limited right now. Try again in a minute or add more keys to OPENROUTER_API_KEYS.'
+        : retryAfterSec
+          ? `OpenRouter is rate-limited right now.${freeHint} Try again in ~${retryAfterSec}s, add keys from separate accounts, or switch to a paid model.`
+          : `Every OpenRouter key is rate-limited right now.${freeHint} Wait a minute, add more keys from separate accounts, or switch to a paid model.`
     );
     this.name = 'AiUnavailableError';
   }
@@ -36,6 +49,69 @@ export class AiUnavailableError extends Error {
 
 export function isStreamingEnabled(): boolean {
   return hasOpenRouterKeys();
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function maxAttempts(): number {
+  return Math.max(keyCount(), 1) * 3;
+}
+
+async function postChat(
+  apiKey: string,
+  messages: ChatMessage[],
+  opts: StreamOptions,
+  stream: boolean,
+): Promise<Response> {
+  const model = opts.model ?? process.env.OPENROUTER_MODEL ?? 'meta-llama/llama-3.3-70b-instruct:free';
+  return fetch(`${BASE_URL}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+      'X-Title': 'ServiceLens',
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      temperature: opts.temperature ?? 0.2,
+      stream,
+      ...(opts.responseFormat === 'json_object' ? { response_format: { type: 'json_object' } } : {}),
+      ...(opts.maxTokens ? { max_tokens: opts.maxTokens } : {}),
+    }),
+  });
+}
+
+type ChatAttempt = { ok: true; res: Response; apiKey: string } | { ok: false; reason: 'rate_limited'; retryAfterSec?: number };
+
+async function requestChat(messages: ChatMessage[], opts: StreamOptions, stream: boolean): Promise<ChatAttempt> {
+  let lastRetryAfterSec: number | undefined;
+  for (let attempt = 0; attempt < maxAttempts(); attempt++) {
+    const apiKey = pickKey();
+    if (!apiKey) break;
+
+    const res = await postChat(apiKey, messages, opts, stream);
+    if (res.ok) return { ok: true, res, apiKey };
+
+    const body = await res.text().catch(() => '');
+    const retryAfterMs = parseRetryAfterMs(res.headers);
+    if (retryAfterMs) lastRetryAfterSec = Math.max(1, Math.ceil(retryAfterMs / 1000));
+    const plan = classifyOpenRouterResponse(res.status, body, retryAfterMs);
+
+    if (plan.action === 'fail') throw new Error(plan.message);
+    if (plan.markKeyFailed) {
+      markFailed(apiKey, plan.waitMs);
+      console.warn(`[openrouter] key cooled (${res.status}); rotating`);
+    } else {
+      console.warn(`[openrouter] upstream ${res.status}; retrying in ${plan.waitMs}ms`);
+    }
+    await sleep(plan.waitMs);
+  }
+
+  return { ok: false, reason: 'rate_limited', retryAfterSec: lastRetryAfterSec };
 }
 
 // Async iterable of content deltas. Caller is responsible for assembling them.
@@ -48,79 +124,37 @@ export async function* streamChat(messages: ChatMessage[], opts: StreamOptions =
     return;
   }
 
-  const model = opts.model ?? process.env.OPENROUTER_MODEL ?? 'meta-llama/llama-3.3-70b-instruct:free';
+  const attempt = await requestChat(messages, opts, true);
+  if (!attempt.ok) {
+    console.warn('[openrouter] all keys cooling down — falling back to heuristic');
+    yield* heuristicStream(messages);
+    return;
+  }
 
-  // Try up to N keys before giving up. The pool returns null only when every
-  // key is currently in cooldown — at which point we fall back.
-  for (let attempt = 0; attempt < 8; attempt++) {
-    const apiKey = pickKey();
-    if (!apiKey) {
-      console.warn('[openrouter] all keys cooling down — falling back to heuristic');
-      yield* heuristicStream(messages);
-      return;
-    }
-
-    const res = await fetch(`${BASE_URL}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-        'X-Title': 'ServiceLens',
-      },
-      body: JSON.stringify({
-        model,
-        messages,
-        temperature: opts.temperature ?? 0.2,
-        stream: true,
-        ...(opts.responseFormat === 'json_object' ? { response_format: { type: 'json_object' } } : {}),
-        ...(opts.maxTokens ? { max_tokens: opts.maxTokens } : {}),
-      }),
-    });
-
-    if (res.status === 429 || res.status >= 500) {
-      const body = await res.text().catch(() => '');
-      if (isRateLimited(res.status, body) || res.status >= 500) {
-        markFailed(apiKey);
-        console.warn(`[openrouter] key cooled (${res.status}); rotating`);
-        continue; // try next key
-      }
-    }
-    if (!res.ok || !res.body) {
-      // Non-rate-limit failures (400, 401, 404 model-not-found) won't improve
-      // by retrying with another key — surface immediately.
-      const text = await res.text().catch(() => '');
-      throw new Error(`OpenRouter stream error ${res.status}: ${text.slice(0, 500)}`);
-    }
-
-    const decoder = new TextDecoder();
-    const reader = res.body.getReader();
-    let buffer = '';
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) return;
-      buffer += decoder.decode(value, { stream: true });
-      let idx: number;
-      // OpenRouter follows the OpenAI SSE shape: lines starting with "data: ".
-      while ((idx = buffer.indexOf('\n')) >= 0) {
-        const line = buffer.slice(0, idx).trim();
-        buffer = buffer.slice(idx + 1);
-        if (!line.startsWith('data:')) continue;
-        const payload = line.slice(5).trim();
-        if (payload === '[DONE]') return;
-        try {
-          const json = JSON.parse(payload);
-          const delta = json.choices?.[0]?.delta?.content ?? '';
-          if (delta) yield delta as string;
-        } catch {
-          // Ignore keep-alive comments / malformed lines.
-        }
+  const decoder = new TextDecoder();
+  const reader = attempt.res.body!.getReader();
+  let buffer = '';
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) return;
+    buffer += decoder.decode(value, { stream: true });
+    let idx: number;
+    // OpenRouter follows the OpenAI SSE shape: lines starting with "data: ".
+    while ((idx = buffer.indexOf('\n')) >= 0) {
+      const line = buffer.slice(0, idx).trim();
+      buffer = buffer.slice(idx + 1);
+      if (!line.startsWith('data:')) continue;
+      const payload = line.slice(5).trim();
+      if (payload === '[DONE]') return;
+      try {
+        const json = JSON.parse(payload);
+        const delta = json.choices?.[0]?.delta?.content ?? '';
+        if (delta) yield delta as string;
+      } catch {
+        // Ignore keep-alive comments / malformed lines.
       }
     }
   }
-
-  // Ran out of attempts — every key bounced.
-  yield* heuristicStream(messages);
 }
 
 // Non-streaming variant — accumulates and returns once. Used for the fix-PR
@@ -131,49 +165,15 @@ export async function chatOnce(messages: ChatMessage[], opts: StreamOptions = {}
     return heuristicCompletion(messages, opts.responseFormat === 'json_object');
   }
 
-  const model = opts.model ?? process.env.OPENROUTER_MODEL ?? 'meta-llama/llama-3.3-70b-instruct:free';
-
-  for (let attempt = 0; attempt < 8; attempt++) {
-    const apiKey = pickKey();
-    if (!apiKey) {
-      if (opts.strict) throw new AiUnavailableError('rate_limited');
-      console.warn('[openrouter] all keys cooling down — falling back to heuristic');
-      return heuristicCompletion(messages, opts.responseFormat === 'json_object');
-    }
-    const res = await fetch(`${BASE_URL}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-        'X-Title': 'ServiceLens',
-      },
-      body: JSON.stringify({
-        model,
-        messages,
-        temperature: opts.temperature ?? 0.2,
-        ...(opts.responseFormat === 'json_object' ? { response_format: { type: 'json_object' } } : {}),
-        ...(opts.maxTokens ? { max_tokens: opts.maxTokens } : {}),
-      }),
-    });
-    if (res.status === 429 || res.status >= 500) {
-      const body = await res.text().catch(() => '');
-      if (isRateLimited(res.status, body) || res.status >= 500) {
-        markFailed(apiKey);
-        console.warn(`[openrouter] key cooled (${res.status}); rotating`);
-        continue;
-      }
-    }
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(`OpenRouter error ${res.status}: ${text.slice(0, 500)}`);
-    }
-    const json = await res.json();
-    return json.choices?.[0]?.message?.content ?? '';
+  const attempt = await requestChat(messages, opts, false);
+  if (!attempt.ok) {
+    if (opts.strict) throw new AiUnavailableError('rate_limited', attempt.retryAfterSec);
+    console.warn('[openrouter] all keys cooling down — falling back to heuristic');
+    return heuristicCompletion(messages, opts.responseFormat === 'json_object');
   }
 
-  if (opts.strict) throw new AiUnavailableError('rate_limited');
-  return heuristicCompletion(messages, opts.responseFormat === 'json_object');
+  const json = await attempt.res.json();
+  return json.choices?.[0]?.message?.content ?? '';
 }
 
 // Small helper used to surface the model name into the UI / persistence.

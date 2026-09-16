@@ -38,9 +38,9 @@ export default async function ArchitectureLayout({
 
   return (
     <div className="flex flex-col">
-      <div className="border-b border-hairline bg-canvas/50">
+      <div className="border-b border-border/50 bg-background/50">
         <div className="px-6 lg:px-8 pt-6 pb-4">
-          <Link href="/architectures" className="text-xs text-mute inline-flex items-center gap-1 mb-3 hover:text-ink">
+          <Link href="/architectures" className="text-xs text-muted-foreground inline-flex items-center gap-1 mb-3 hover:text-foreground">
             <ArrowLeft className="h-3 w-3" /> Architectures
           </Link>
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -49,19 +49,19 @@ export default async function ArchitectureLayout({
                 <h1 className="text-2xl font-semibold truncate">{architecture.name}</h1>
                 <StatusBadge status={architecture.status} />
                 {!canEdit && (
-                  <span className="rounded-full border border-hairline-strong px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-mute">Read-only</span>
+                  <span className="rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Read-only</span>
                 )}
                 {architecture.demo && (
-                  <span className="rounded-full border border-hairline-strong px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-mute">Demo · simulated data</span>
+                  <span className="rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Demo · simulated data</span>
                 )}
               </div>
-              {architecture.description && <p className="text-sm text-mute mt-1 max-w-2xl">{architecture.description}</p>}
-              <div className="flex items-center gap-3 text-xs text-mute mt-2">
+              {architecture.description && <p className="text-sm text-muted-foreground mt-1 max-w-2xl">{architecture.description}</p>}
+              <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
                 <span>{architecture._count.services} services</span>
                 <span>·</span>
                 <span>{architecture._count.regressionRuns} runs</span>
                 <span>·</span>
-                <Link href={`/architectures/${architecture.id}/incidents`} className={architecture._count.incidents > 0 ? 'text-accent-yellow hover:underline' : 'hover:underline'}>
+                <Link href={`/architectures/${architecture.id}/incidents`} className={architecture._count.incidents > 0 ? 'text-yellow-500 hover:underline' : 'hover:underline'}>
                   {architecture._count.incidents} open incident{architecture._count.incidents === 1 ? '' : 's'}
                 </Link>
               </div>

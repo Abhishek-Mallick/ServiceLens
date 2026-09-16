@@ -25,7 +25,7 @@ export function HealthOverviewChart({ healthy, degraded, down, unknown }: Props)
   const total = healthy + degraded + down + unknown;
 
   if (total === 0) {
-    return <div className="flex h-[180px] items-center justify-center text-sm text-mute">No services to report yet.</div>;
+    return <div className="flex h-[180px] items-center justify-center text-sm text-muted-foreground">No services to report yet.</div>;
   }
 
   if (!mounted) {
@@ -45,8 +45,8 @@ export function HealthOverviewChart({ healthy, degraded, down, unknown }: Props)
         </PieChart>
       </ResponsiveContainer>
       <div className="text-center text-sm">
-        <span className="font-semibold text-accent-green">{healthy}</span>
-        <span className="text-mute"> of {total} services healthy</span>
+        <span className="font-semibold text-emerald-500">{healthy}</span>
+        <span className="text-muted-foreground"> of {total} services healthy</span>
       </div>
     </div>
   );

@@ -80,7 +80,7 @@ export function OncallDirectory({
             <Input id="oncall-escalate" value={escalate} onChange={(e) => setEscalate(e.target.value)} disabled={!canEdit} inputMode="numeric" />
           </div>
         </div>
-        <p className="text-[11px] text-mute">
+        <p className="text-[11px] text-muted-foreground">
           In Google Sheets choose File → Share → Publish to web → <em>Comma-separated values</em>. Columns:{' '}
           <code>service_name, oncall_name, oncall_email, escalation_email</code>. A <code>*</code> row covers every service without its own row. Set escalation to 0 to turn it off.
         </p>
@@ -98,24 +98,24 @@ export function OncallDirectory({
         )}
 
         {source && (
-          <div className="text-[12px] text-mute">
+          <div className="text-[12px] text-muted-foreground">
             Last fetched {source.lastFetchedAt ? formatRelative(new Date(source.lastFetchedAt)) : 'never'} · refreshed automatically every 5 min when paging
-            {source.lastError && <div className="text-accent-yellow mt-1">{source.lastError}</div>}
+            {source.lastError && <div className="text-yellow-500 mt-1">{source.lastError}</div>}
           </div>
         )}
 
         {roster.length > 0 && (
-          <div className="overflow-x-auto rounded-md border border-hairline">
+          <div className="overflow-x-auto rounded-md border border-border/50">
             <table className="w-full text-[12px]">
-              <thead className="text-left text-mute">
+              <thead className="text-left text-muted-foreground">
                 <tr><th className="px-3 py-2 font-medium">Service</th><th className="px-3 py-2 font-medium">On-call</th><th className="px-3 py-2 font-medium">Escalation</th></tr>
               </thead>
               <tbody>
                 {roster.map((r, i) => (
-                  <tr key={i} className="border-t border-hairline">
+                  <tr key={i} className="border-t border-border/50">
                     <td className="px-3 py-2 font-mono">{r.service}</td>
-                    <td className="px-3 py-2">{r.name} <span className="text-mute">&lt;{r.email}&gt;</span></td>
-                    <td className="px-3 py-2 text-mute">{r.escalationEmail ?? '—'}</td>
+                    <td className="px-3 py-2">{r.name} <span className="text-muted-foreground">&lt;{r.email}&gt;</span></td>
+                    <td className="px-3 py-2 text-muted-foreground">{r.escalationEmail ?? '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -123,7 +123,7 @@ export function OncallDirectory({
           </div>
         )}
         {source && uncovered.length > 0 && (
-          <p className="text-[12px] text-accent-yellow">No one is on call for: {uncovered.join(', ')}. Add rows for them or a <code>*</code> fallback row.</p>
+          <p className="text-[12px] text-yellow-500">No one is on call for: {uncovered.join(', ')}. Add rows for them or a <code>*</code> fallback row.</p>
         )}
       </CardContent>
     </Card>

@@ -1,47 +1,24 @@
-// Single source of truth for the DESIGN.md system (Resend dark editorial).
-//
-// tailwind.config.ts builds its palette and radii from this file, and
-// tests/design-tokens.test.ts keeps it identical to DESIGN.md. Components use
-// the Tailwind classes (bg-surface-card, text-mute, border-hairline-strong…);
-// code that needs raw values — SVG strokes, React Flow props — imports them
-// from here. Nothing hard-codes a color.
+// Raw color hexes needed at JS runtime (chart SVGs, React Flow edges, email HTML).
+// UI class colors come from shadcn semantic tokens in globals.css / tailwind.config.ts.
 
 export const colors = {
-  primary: '#fcfdff',
-  'primary-on': '#000000',
-  ink: '#fcfdff',
-  body: 'rgba(252,253,255,0.86)',
-  charcoal: 'rgba(252,253,255,0.7)',
-  mute: '#a1a4a5',
-  ash: '#888e90',
-  stone: '#464a4d',
-  'on-light': '#000000',
-  'on-light-mute': 'rgba(0,0,51,0.7)',
-  canvas: '#000000',
-  'surface-card': '#0a0a0c',
-  'surface-elevated': '#101012',
-  'surface-deep': '#06060a',
-  hairline: 'rgba(255,255,255,0.06)',
-  'hairline-strong': 'rgba(255,255,255,0.14)',
-  'divider-soft': 'rgba(255,255,255,0.04)',
-  'accent-orange': '#ff801f',
-  'accent-orange-glow': 'rgba(255,89,0,0.22)',
-  'accent-yellow': '#ffc53d',
-  'accent-blue': '#3b9eff',
-  'accent-blue-glow': 'rgba(0,117,255,0.34)',
-  'accent-green': '#11ff99',
-  'accent-green-glow': 'rgba(34,255,153,0.18)',
-  'accent-red': '#ff2047',
-  'accent-red-glow': 'rgba(255,32,71,0.34)',
-  link: '#3b9eff',
-  'surface-light': '#f1f7fe',
+  // Neutrals — align with shadcn zinc.
+  foreground: '#0a0a0a',
+  mutedForeground: '#71717a',
+  border: '#e4e4e7',
+  card: '#ffffff',
+  cardElevated: '#f4f4f5',
+  slate: '#64748b',
+  // Accents for status / chart series.
+  blue: '#3b82f6',
+  emerald: '#10b981',
+  amber: '#f59e0b',
+  red: '#ef4444',
+  orange: '#f97316',
 } as const;
-
-export type ColorToken = keyof typeof colors;
 
 export const rounded = {
   none: '0px',
-  xs: '4px',
   sm: '6px',
   md: '8px',
   lg: '12px',
@@ -49,57 +26,32 @@ export const rounded = {
   full: '9999px',
 } as const;
 
-export const spacing = {
-  xxs: '2px',
-  xs: '4px',
-  sm: '8px',
-  md: '12px',
-  lg: '16px',
-  xl: '24px',
-  xxl: '32px',
-  xxxl: '48px',
-  section: '96px',
-  band: '128px',
-} as const;
-
-// Values DESIGN.md describes in prose rather than as named colors.
 export const derived = {
-  scrim: 'rgba(0,0,0,0.8)', // dialogs: "80% black scrim instead of a shadow"
+  scrim: 'rgba(0,0,0,0.8)',
   minimapMask: 'rgba(0,0,0,0.6)',
 } as const;
 
-// ── Semantic mappings used across the product ──────────────────────────────
 export const statusColor = {
-  healthy: colors['accent-green'],
-  degraded: colors['accent-yellow'],
-  down: colors['accent-red'],
-  unknown: colors.stone,
+  healthy: colors.emerald,
+  degraded: colors.amber,
+  down: colors.red,
+  unknown: colors.slate,
 } as const;
 
 export const severityColor = {
-  critical: colors['accent-red'],
-  warning: colors['accent-orange'],
-  info: colors['accent-blue'],
+  critical: colors.red,
+  warning: colors.orange,
+  info: colors.blue,
 } as const;
 
 export const edgeColor = {
-  rest: colors['accent-blue'],
-  grpc: colors['accent-yellow'],
-  event: colors['accent-orange'],
-  kafka: colors['accent-orange'],
-  database: colors.ash,
+  rest: colors.blue,
+  grpc: colors.amber,
+  event: colors.orange,
+  kafka: colors.orange,
+  database: colors.slate,
 } as const;
 
 export function statusOf(status: string | null | undefined): keyof typeof statusColor {
   return status && status in statusColor ? (status as keyof typeof statusColor) : 'unknown';
-}
-
-// Tailwind palette: every token plus status-*/severity-* aliases. It replaces
-// Tailwind's default palette entirely (see tailwind.config.ts).
-export function tailwindColors(): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const [k, v] of Object.entries(colors)) out[k] = v;
-  for (const [k, v] of Object.entries(statusColor)) out[`status-${k}`] = v;
-  for (const [k, v] of Object.entries(severityColor)) out[`severity-${k}`] = v;
-  return out;
 }

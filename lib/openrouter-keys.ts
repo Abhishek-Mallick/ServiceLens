@@ -8,10 +8,10 @@
 // Env: OPENROUTER_API_KEYS="sk-or-1,sk-or-2,sk-or-3"
 //      Legacy OPENROUTER_API_KEY="sk-or-1" still accepted (treated as a 1-key pool).
 
-const RATE_LIMIT_COOLDOWN_MS = 60_000;   // 60s base cooldown for the first 429
-const MAX_BACKOFF_MS = 300_000;          // ceiling — 5 minutes
+export const RATE_LIMIT_COOLDOWN_MS = 60_000;   // 60s base cooldown for the first 429
+export const MAX_BACKOFF_MS = 300_000;          // ceiling — 5 minutes
 
-interface Failure { attempts: number; timestamp: number }
+interface Failure { attempts: number; timestamp: number; cooldownMs: number }
 
 // Cached on globalThis so HMR doesn't reset the cooldown state in dev.
 interface PoolGlobal {
@@ -19,6 +19,7 @@ interface PoolGlobal {
     keys: string[];
     cursor: number;
     failed: Map<string, Failure>;
+    pinned?: boolean;
   };
 }
 
@@ -38,6 +39,13 @@ function pool() {
   const g = globalThis as unknown as PoolGlobal;
   if (!g.__servicelens_or_pool) {
     g.__servicelens_or_pool = { keys: parseKeys(process.env), cursor: 0, failed: new Map() };
+  } else if (!g.__servicelens_or_pool.pinned) {
+    const fresh = parseKeys(process.env);
+    if (fresh.join('\0') !== g.__servicelens_or_pool.keys.join('\0')) {
+      g.__servicelens_or_pool.keys = fresh;
+      g.__servicelens_or_pool.cursor = 0;
+      g.__servicelens_or_pool.failed.clear();
+    }
   }
   return g.__servicelens_or_pool!;
 }
@@ -54,8 +62,7 @@ function pruneExpiredFailures() {
   const p = pool();
   const now = Date.now();
   for (const [key, data] of p.failed.entries()) {
-    const backoff = Math.min(MAX_BACKOFF_MS, RATE_LIMIT_COOLDOWN_MS * (data.attempts + 1));
-    if (now - data.timestamp > backoff) p.failed.delete(key);
+    if (now - data.timestamp > data.cooldownMs) p.failed.delete(key);
   }
 }
 
@@ -73,10 +80,40 @@ export function pickKey(): string | null {
   return null;
 }
 
-export function markFailed(key: string): void {
+export function markFailed(key: string, cooldownMs = RATE_LIMIT_COOLDOWN_MS): void {
   const p = pool();
-  const entry = p.failed.get(key) ?? { attempts: 0, timestamp: Date.now() };
-  p.failed.set(key, { attempts: entry.attempts + 1, timestamp: Date.now() });
+  const entry = p.failed.get(key) ?? { attempts: 0, timestamp: Date.now(), cooldownMs };
+  const attempts = entry.attempts + 1;
+  p.failed.set(key, {
+    attempts,
+    timestamp: Date.now(),
+    cooldownMs: Math.min(MAX_BACKOFF_MS, Math.max(cooldownMs, RATE_LIMIT_COOLDOWN_MS * attempts)),
+  });
+}
+
+export function parseRetryAfterMs(headers: Headers): number | null {
+  const raw = headers.get('retry-after')?.trim();
+  if (!raw) return null;
+  const sec = Number(raw);
+  if (Number.isFinite(sec) && sec >= 0) return Math.min(sec * 1000, MAX_BACKOFF_MS);
+  const date = Date.parse(raw);
+  if (Number.isFinite(date)) return Math.min(Math.max(0, date - Date.now()), MAX_BACKOFF_MS);
+  return null;
+}
+
+export type OpenRouterRetry =
+  | { action: 'retry'; rotateKey: boolean; waitMs: number; markKeyFailed: boolean }
+  | { action: 'fail'; message: string };
+
+export function classifyOpenRouterResponse(status: number, body: string, retryAfterMs: number | null): OpenRouterRetry {
+  const waitMs = retryAfterMs ?? (status === 429 ? 2_000 : 3_000);
+  if (isRateLimited(status, body)) {
+    return { action: 'retry', rotateKey: true, waitMs, markKeyFailed: true };
+  }
+  if (status >= 500 && status < 600) {
+    return { action: 'retry', rotateKey: false, waitMs, markKeyFailed: false };
+  }
+  return { action: 'fail', message: `OpenRouter error ${status}: ${body.slice(0, 500)}` };
 }
 
 // Heuristic for "this looks rate-limited / quota-exhausted" — covers OpenRouter's
@@ -96,5 +133,5 @@ export function isRateLimited(status: number, body: string): boolean {
 // Test hook — wipes pool state. Used only in unit tests.
 export function __resetPool(keys: string[]): void {
   const g = globalThis as unknown as PoolGlobal;
-  g.__servicelens_or_pool = { keys: keys.slice(), cursor: 0, failed: new Map() };
+  g.__servicelens_or_pool = { keys: keys.slice(), cursor: 0, failed: new Map(), pinned: true };
 }

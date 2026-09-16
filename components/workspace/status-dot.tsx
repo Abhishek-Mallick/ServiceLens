@@ -14,7 +14,7 @@ export function StatusDot({ status, pulse = false, className }: { status: string
 export function SeverityPill({ severity, label }: { severity: string; label?: string }) {
   const color = severityColor[(severity in severityColor ? severity : 'info') as keyof typeof severityColor];
   return (
-    <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-canvas" style={{ background: color }}>
+    <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-background" style={{ background: color }}>
       {label ?? severity}
     </span>
   );

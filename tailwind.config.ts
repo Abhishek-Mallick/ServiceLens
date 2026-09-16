@@ -1,5 +1,4 @@
 import type { Config } from 'tailwindcss';
-import { colors, rounded, tailwindColors } from './lib/design-tokens';
 
 const config: Config = {
   darkMode: ['class'],
@@ -14,26 +13,52 @@ const config: Config = {
       padding: '2rem',
       screens: { '2xl': '1400px' },
     },
-    // The palette *replaces* Tailwind's: only DESIGN.md tokens (plus the
-    // status-*/severity-* aliases) exist, so a non-token color class renders
-    // nothing. tests/design-tokens.test.ts also rejects them at build time.
-    colors: {
-      transparent: 'transparent',
-      current: 'currentColor',
-      inherit: 'inherit',
-      ...tailwindColors(),
-    },
     extend: {
-      fontFamily: {
-        sans: ['var(--font-inter)', 'Inter', 'ui-sans-serif', 'system-ui'],
-        display: ['var(--font-display)', 'Tiempos Headline', 'Söhne', 'Georgia', 'serif'],
-        mono: ['var(--font-mono)', 'JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+      colors: {
+        border: 'hsl(var(--border))',
+        input: 'hsl(var(--input))',
+        ring: 'hsl(var(--ring))',
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
+        primary: {
+          DEFAULT: 'hsl(var(--primary))',
+          foreground: 'hsl(var(--primary-foreground))',
+        },
+        secondary: {
+          DEFAULT: 'hsl(var(--secondary))',
+          foreground: 'hsl(var(--secondary-foreground))',
+        },
+        destructive: {
+          DEFAULT: 'hsl(var(--destructive))',
+          foreground: 'hsl(var(--destructive-foreground))',
+        },
+        muted: {
+          DEFAULT: 'hsl(var(--muted))',
+          foreground: 'hsl(var(--muted-foreground))',
+        },
+        accent: {
+          DEFAULT: 'hsl(var(--accent))',
+          foreground: 'hsl(var(--accent-foreground))',
+        },
+        popover: {
+          DEFAULT: 'hsl(var(--popover))',
+          foreground: 'hsl(var(--popover-foreground))',
+        },
+        card: {
+          DEFAULT: 'hsl(var(--card))',
+          foreground: 'hsl(var(--card-foreground))',
+        },
       },
-      borderColor: { DEFAULT: colors['hairline-strong'] },
-      ringColor: { DEFAULT: colors['accent-blue'] },
-      ringOffsetColor: { DEFAULT: colors.canvas },
-      // DESIGN.md radius scale (lg = 12px, the container radius).
-      borderRadius: { ...rounded },
+      fontFamily: {
+        sans: ['var(--font-sans)', 'var(--font-inter)', 'ui-sans-serif', 'system-ui'],
+        heading: ['var(--font-heading)', 'var(--font-sans)', 'ui-sans-serif', 'system-ui'],
+        mono: ['var(--font-mono)', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+      },
+      borderRadius: {
+        lg: 'var(--radius)',
+        md: 'calc(var(--radius) - 2px)',
+        sm: 'calc(var(--radius) - 4px)',
+      },
       keyframes: {
         'accordion-down': {
           from: { height: '0' },

@@ -86,42 +86,42 @@ export function EdgeDrawer({
   const endpoint = (s: WorkspaceService | undefined, fallback: string) => (
     <button type="button" disabled={!s} onClick={() => s && onSelectService(s.id)} className="flex min-w-0 items-center gap-1.5 text-left disabled:cursor-default">
       {s && <StatusDot status={s.healthStatus} />}
-      <span className="truncate text-[14px] text-ink">{s?.name ?? fallback}</span>
+      <span className="truncate text-[14px] text-foreground">{s?.name ?? fallback}</span>
     </button>
   );
 
   return (
-    <aside className="absolute inset-y-0 right-0 z-20 flex w-full max-w-[380px] flex-col border-l border-hairline-strong bg-surface-elevated" aria-label="Dependency details">
-      <header className="flex items-center justify-between gap-3 border-b border-hairline px-4 py-3">
+    <aside className="absolute inset-y-0 right-0 z-20 flex w-full max-w-[380px] flex-col border-l border-border bg-muted" aria-label="Dependency details">
+      <header className="flex items-center justify-between gap-3 border-b border-border/50 px-4 py-3">
         <div className="flex min-w-0 items-center gap-2">
           {endpoint(from, edge.source)}
-          <ArrowRight className="h-3.5 w-3.5 shrink-0 text-mute" />
+          <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           {endpoint(to, edge.target)}
         </div>
         <Button size="sm" variant="ghost" onClick={onClose} aria-label="Close dependency details"><X className="h-4 w-4" /></Button>
       </header>
       <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 text-[13px]">
         <div className="grid grid-cols-[88px_1fr] gap-y-2">
-          <span className="text-mute">Type</span><span className="uppercase tracking-wide text-body">{edge.type}</span>
-          {d.envVar && (<><span className="text-mute">Env var</span><code className="text-body">{d.envVar}</code></>)}
-          {(d.topic || d.eventName) && (<><span className="text-mute">Event</span><span className="text-body">{d.eventName ?? ''}{d.topic ? ` · ${d.topic}` : ''}</span></>)}
+          <span className="text-muted-foreground">Type</span><span className="uppercase tracking-wide text-foreground/90">{edge.type}</span>
+          {d.envVar && (<><span className="text-muted-foreground">Env var</span><code className="text-foreground/90">{d.envVar}</code></>)}
+          {(d.topic || d.eventName) && (<><span className="text-muted-foreground">Event</span><span className="text-foreground/90">{d.eventName ?? ''}{d.topic ? ` · ${d.topic}` : ''}</span></>)}
           {d.file && (
             <>
-              <span className="text-mute">In code</span>
+              <span className="text-muted-foreground">In code</span>
               {codeLink ? (
-                <a href={codeLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-mono text-[12px] text-link hover:underline">{d.file}{d.line ? `:${d.line}` : ''} <ExternalLink className="h-3 w-3" /></a>
+                <a href={codeLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-mono text-[12px] text-blue-500 hover:underline">{d.file}{d.line ? `:${d.line}` : ''} <ExternalLink className="h-3 w-3" /></a>
               ) : (
-                <span className="font-mono text-[12px] text-body">{d.file}{d.line ? `:${d.line}` : ''}</span>
+                <span className="font-mono text-[12px] text-foreground/90">{d.file}{d.line ? `:${d.line}` : ''}</span>
               )}
             </>
           )}
         </div>
 
-        {d.matchedBy && !d.ambiguous && <p className="text-mute">{HOW[d.matchedBy] ?? ''}</p>}
+        {d.matchedBy && !d.ambiguous && <p className="text-muted-foreground">{HOW[d.matchedBy] ?? ''}</p>}
 
         {d.ambiguous && (
-          <div className="space-y-2 rounded-md border border-hairline-strong bg-surface-card p-3">
-            <p className="text-body"><code>{d.envVar}</code> matches more than one service, so this edge isn&apos;t confirmed yet.</p>
+          <div className="space-y-2 rounded-md border border-border bg-card p-3">
+            <p className="text-foreground/90"><code>{d.envVar}</code> matches more than one service, so this edge isn&apos;t confirmed yet.</p>
             {canEdit ? (
               <div className="flex flex-wrap gap-2">
                 {candidates.map((c) => (
@@ -131,13 +131,13 @@ export function EdgeDrawer({
                 ))}
               </div>
             ) : (
-              <p className="text-[12px] text-mute">An editor can confirm the right one.</p>
+              <p className="text-[12px] text-muted-foreground">An editor can confirm the right one.</p>
             )}
           </div>
         )}
 
         {editable && !d.ambiguous && (
-          <div className="border-t border-hairline pt-3">
+          <div className="border-t border-border/50 pt-3">
             {d.matchedBy === 'manual' ? (
               <Button size="sm" variant="ghost" disabled={busy} onClick={removeManual}>
                 {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} Remove this edge

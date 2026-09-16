@@ -34,20 +34,20 @@ export function GithubPanel({
         )}
       </CardHeader>
       <CardContent className="space-y-2">
-        {justChanged && <div className="rounded-md border border-accent-green/40 bg-accent-green/5 p-2 text-[12px] text-accent-green">GitHub App {justChanged === 'update' ? 'access updated' : 'installed'}. Coverage below is refreshed.</div>}
+        {justChanged && <div className="rounded-md border border-emerald-500/40 bg-emerald-500/5 p-2 text-[12px] text-emerald-500">GitHub App {justChanged === 'update' ? 'access updated' : 'installed'}. Coverage below is refreshed.</div>}
         {!configured && (
-          <p className="text-[13px] text-mute">
+          <p className="text-[13px] text-muted-foreground">
             Not configured on this deployment. An admin needs to create the App and set <code>GITHUB_APP_ID</code> / <code>GITHUB_APP_PRIVATE_KEY</code> (see <code>docs/secrets.md</code>).
             Public repos are still analyzed; fix PRs can be copied as a patch.
           </p>
         )}
-        {repos.length === 0 && <div className="text-sm text-mute">No services yet.</div>}
+        {repos.length === 0 && <div className="text-sm text-muted-foreground">No services yet.</div>}
         {repos.map((r) => (
-          <div key={r.repoUrl} className="flex items-center gap-2 rounded-md border border-hairline px-3 py-2 text-[13px]">
-            {r.installed === true ? <CheckCircle2 className="h-4 w-4 text-accent-green" /> : r.installed === false ? <XCircle className="h-4 w-4 text-accent-yellow" /> : <HelpCircle className="h-4 w-4 text-mute" />}
+          <div key={r.repoUrl} className="flex items-center gap-2 rounded-md border border-border/50 px-3 py-2 text-[13px]">
+            {r.installed === true ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : r.installed === false ? <XCircle className="h-4 w-4 text-yellow-500" /> : <HelpCircle className="h-4 w-4 text-muted-foreground" />}
             <a href={r.repoUrl} target="_blank" rel="noreferrer" className="font-mono hover:underline">{r.fullName ?? r.repoUrl}</a>
-            <span className="text-mute truncate">· {r.services.join(', ')}</span>
-            <span className="ml-auto text-[12px] text-mute">
+            <span className="text-muted-foreground truncate">· {r.services.join(', ')}</span>
+            <span className="ml-auto text-[12px] text-muted-foreground">
               {r.installed === true ? 'fix PRs enabled' : r.installed === false ? 'App not installed' : configured ? 'could not check' : '—'}
             </span>
           </div>

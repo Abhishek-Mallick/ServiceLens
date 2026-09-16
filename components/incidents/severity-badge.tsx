@@ -1,9 +1,9 @@
 import { cn } from '@/lib/utils';
 
 const styles: Record<string, string> = {
-  info: 'bg-accent-blue/10 text-accent-blue border-accent-blue/30',
-  warning: 'bg-accent-yellow/10 text-accent-yellow border-accent-yellow/30',
-  critical: 'bg-accent-red/10 text-accent-red border-accent-red/30',
+  info: 'bg-blue-500/10 text-blue-500 border-blue-500/30',
+  warning: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30',
+  critical: 'bg-red-500/10 text-red-500 border-red-500/30',
 };
 
 export function SeverityBadge({ severity, className }: { severity: string; className?: string }) {

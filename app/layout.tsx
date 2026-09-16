@@ -1,16 +1,21 @@
 import type { Metadata } from 'next';
-import { Inter, Fraunces, JetBrains_Mono } from 'next/font/google';
+import { Inter, Fraunces, JetBrains_Mono, Manrope, Space_Grotesk } from 'next/font/google';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 import { AuthProvider } from '@/components/providers/auth-provider';
+import { AppToaster } from '@/components/providers/app-toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { Toaster } from 'sonner';
 import './globals.css';
+import { cn } from '@/lib/utils';
 
-// Inter — UI body. ABC Favorit's open-source stand-in role is also Inter here.
+const spaceGroteskHeading = Space_Grotesk({ subsets: ['latin'], variable: '--font-heading' });
+const manrope = Manrope({ subsets: ['latin'], variable: '--font-sans' });
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
-// Fraunces — open-source editorial serif standing in for Domaine Display per DESIGN.md.
-const display = Fraunces({ subsets: ['latin'], variable: '--font-display', display: 'swap', axes: ['SOFT', 'opsz'] });
-// JetBrains Mono — code-window monospace.
+const display = Fraunces({
+  subsets: ['latin'],
+  variable: '--font-display',
+  display: 'swap',
+  axes: ['SOFT', 'opsz'],
+});
 const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono', display: 'swap' });
 
 export const metadata: Metadata = {
@@ -21,27 +26,24 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${display.variable} ${mono.variable} dark`}>
-      <body className="min-h-screen bg-canvas text-ink font-sans antialiased">
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={cn(
+        inter.variable,
+        display.variable,
+        mono.variable,
+        'font-sans',
+        manrope.variable,
+        spaceGroteskHeading.variable
+      )}
+    >
+      <body className="min-h-screen bg-background font-sans text-foreground antialiased">
         <AuthProvider>
-          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-            <TooltipProvider delayDuration={150}>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+            <TooltipProvider delay={150}>
               {children}
-              <Toaster
-                theme="dark"
-                position="bottom-right"
-                toastOptions={{
-                  // DESIGN.md surfaces instead of sonner's own light palette.
-                  classNames: {
-                    toast: 'bg-surface-elevated border border-hairline-strong text-ink',
-                    description: 'text-mute',
-                    success: '[&_[data-icon]]:text-accent-green',
-                    error: '[&_[data-icon]]:text-accent-red',
-                    warning: '[&_[data-icon]]:text-accent-orange',
-                    info: '[&_[data-icon]]:text-accent-blue',
-                  },
-                }}
-              />
+              <AppToaster />
             </TooltipProvider>
           </ThemeProvider>
         </AuthProvider>

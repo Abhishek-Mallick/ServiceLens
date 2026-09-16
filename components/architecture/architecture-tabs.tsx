@@ -25,7 +25,7 @@ export function ArchitectureTabs({ architectureId }: { architectureId: string })
             href={t.href}
             className={cn(
               'relative px-3 py-2 text-sm transition-colors',
-              active ? 'text-ink font-medium' : 'text-mute hover:text-ink'
+              active ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'
             )}
           >
             {t.label}

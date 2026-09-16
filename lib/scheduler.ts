@@ -17,7 +17,17 @@ import { drain, enqueue } from './jobs';
 import { registerJobHandlers } from './job-handlers';
 
 export const DEMO_SIM_INTERVAL_SEC = 60;
-const PROBE_CONCURRENCY = 8;
+
+function poolConnectionLimit(): number {
+  try {
+    const limit = Number(new URL(process.env.DATABASE_URL ?? '').searchParams.get('connection_limit'));
+    return Number.isFinite(limit) && limit > 0 ? limit : 10;
+  } catch {
+    return 10;
+  }
+}
+
+const PROBE_CONCURRENCY = Math.min(8, poolConnectionLimit());
 
 export function isDue(lastRunAt: Date | null, intervalSec: number, now: number): boolean {
   return !lastRunAt || now - lastRunAt.getTime() >= intervalSec * 1000;
@@ -109,7 +119,8 @@ export async function tick(now: Date = new Date()): Promise<TickResult> {
   const start = Date.now();
   registerJobHandlers();
 
-  const [real, demo] = await Promise.all([claimDueServices(now), dueDemoServices(now)]);
+  const real = await claimDueServices(now);
+  const demo = await dueDemoServices(now);
   await mapLimit([...real, ...demo], PROBE_CONCURRENCY, (id) =>
     probeService(id).catch((err) => {
       console.error(`[scheduler] probe ${id} failed:`, err);
@@ -118,7 +129,8 @@ export async function tick(now: Date = new Date()): Promise<TickResult> {
   );
 
   await enqueueDueContractTests(now).catch((err) => console.error('[scheduler] contract-test scheduling failed:', err));
-  const [chaos, jobs] = await Promise.all([runDueSchedules(), drain({ limit: 25 })]);
+  const chaos = await runDueSchedules();
+  const jobs = await drain({ limit: 25 });
 
   return { probed: real.length, simulated: demo.length, chaos: chaos.filter((c) => c.ok).length, jobs: jobs.length, ms: Date.now() - start };
 }

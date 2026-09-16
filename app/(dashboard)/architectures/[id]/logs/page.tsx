@@ -27,7 +27,7 @@ export default async function LogsPage({ params }: { params: { id: string } }) {
     <div className="p-6 lg:p-8 space-y-6">
       <div>
         <h2 className="text-xl font-semibold">Logs</h2>
-        <p className="text-sm text-mute mt-1">
+        <p className="text-sm text-muted-foreground mt-1">
           Search and tail logs across services. Ingest from your own services via <code className="text-[11px]">POST /api/services/:id/logs</code> with the service bearer token (see Service detail → Logs ingestion).
         </p>
       </div>

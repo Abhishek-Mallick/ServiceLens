@@ -16,7 +16,7 @@ export default async function SettingsPage() {
     <div className="p-6 lg:p-8 max-w-3xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Settings</h1>
-        <p className="text-sm text-mute mt-1">Workspace configuration.</p>
+        <p className="text-sm text-muted-foreground mt-1">Workspace configuration.</p>
       </div>
 
       <Card>
@@ -62,7 +62,7 @@ export default async function SettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-mute">
+          <p className="text-sm text-muted-foreground">
             {aiEnabled
               ? 'AI-powered insights are active across your workspace.'
               : 'AI insights are temporarily unavailable. Heuristic analysis is being used instead.'}

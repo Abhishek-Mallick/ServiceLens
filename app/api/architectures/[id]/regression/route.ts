@@ -18,14 +18,12 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   });
   if (!architecture) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const [runs, flows] = await Promise.all([
-    prisma.regressionRun.findMany({
-      where: { architectureId: params.id },
-      orderBy: { createdAt: 'desc' },
-      take: 25,
-    }),
-    listFlowsForArchitecture(params.id),
-  ]);
+  const runs = await prisma.regressionRun.findMany({
+    where: { architectureId: params.id },
+    orderBy: { createdAt: 'desc' },
+    take: 25,
+  });
+  const flows = await listFlowsForArchitecture(params.id);
   return NextResponse.json({ runs, flows });
 }
 

@@ -2,7 +2,7 @@
 // API, persist its ServiceContract, then derive the topology from contracts.
 // Demo architectures keep the legacy seeded analysis and never hit GitHub.
 
-import { prisma } from './prisma';
+import { prisma, readBatch } from './prisma';
 import { parseJson, stringify } from './utils';
 import { ingestService } from './ingest/ingest-service';
 import { saveContract } from './ingest/persist';
@@ -83,7 +83,7 @@ export async function analyzeArchitecture(architectureId: string, opts: { servic
 
 // Contracts + human edge decisions → topology (pure read, no writes).
 export async function computeContractTopology(architectureId: string) {
-  const [services, overrides] = await Promise.all([
+  const [services, overrides] = await readBatch([
     prisma.service.findMany({
       where: { architectureId },
       include: { contract: { select: { outboundDeps: true } } },

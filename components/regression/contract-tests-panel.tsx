@@ -77,38 +77,38 @@ export function ContractTestsPanel({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-center gap-3 text-[13px]">
-            <span className="text-mute">Schedule:</span>
+            <span className="text-muted-foreground">Schedule:</span>
             {canOwn ? (
-              <select className="h-8 rounded-md border border-hairline-strong bg-canvas px-2 text-[12px]" value={interval} disabled={busy !== null} onChange={(e) => schedule(Number(e.target.value))} aria-label="Contract test schedule">
+              <select className="h-8 rounded-md border border-border bg-background px-2 text-[12px]" value={interval} disabled={busy !== null} onChange={(e) => schedule(Number(e.target.value))} aria-label="Contract test schedule">
                 {SCHEDULES.map(([m, label]) => <option key={m} value={m}>{label}</option>)}
               </select>
             ) : (
               <span>{SCHEDULES.find(([m]) => m === interval)?.[1] ?? `every ${interval} min`}</span>
             )}
-            <span className="text-mute">· From CI: <code>POST /api/v1/contract-tests</code> with an API key (fail the build when <code>failed &gt; 0</code>).</span>
+            <span className="text-muted-foreground">· From CI: <code>POST /api/v1/contract-tests</code> with an API key (fail the build when <code>failed &gt; 0</code>).</span>
           </div>
 
           <div>
-            <div className="text-[11px] uppercase tracking-[0.15em] text-mute mb-1.5">Routes that will be called ({checks.length})</div>
+            <div className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground mb-1.5">Routes that will be called ({checks.length})</div>
             {checks.length === 0 ? (
-              <div className="text-sm text-mute">None yet. Services need a deployed URL and at least one GET route without parameters, found by analysis.</div>
+              <div className="text-sm text-muted-foreground">None yet. Services need a deployed URL and at least one GET route without parameters, found by analysis.</div>
             ) : (
-              <div className="rounded-md border border-hairline divide-y divide-hairline max-h-64 overflow-y-auto">
+              <div className="rounded-md border border-border/50 divide-y divide-border/50 max-h-64 overflow-y-auto">
                 {checks.map((c) => (
                   <div key={c.url} className="flex items-center gap-3 px-3 py-1.5 text-[12px]">
-                    <span className="w-32 truncate text-mute">{c.serviceName}</span>
+                    <span className="w-32 truncate text-muted-foreground">{c.serviceName}</span>
                     <code className="truncate">GET {c.path}</code>
-                    <span className="ml-auto font-mono text-[11px] text-mute truncate">{c.source}</span>
+                    <span className="ml-auto font-mono text-[11px] text-muted-foreground truncate">{c.source}</span>
                   </div>
                 ))}
               </div>
             )}
             {skipped.length > 0 && (
               <details className="mt-2">
-                <summary className="text-[12px] text-mute cursor-pointer">{skipped.length} route{skipped.length === 1 ? '' : 's'} not called, and why</summary>
+                <summary className="text-[12px] text-muted-foreground cursor-pointer">{skipped.length} route{skipped.length === 1 ? '' : 's'} not called, and why</summary>
                 <div className="mt-1 space-y-0.5">
                   {skipped.map((s, i) => (
-                    <div key={i} className="text-[12px] text-mute"><span className="text-ink">{s.serviceName}</span> · <code>{s.method} {s.path}</code>: {s.reason}</div>
+                    <div key={i} className="text-[12px] text-muted-foreground"><span className="text-foreground">{s.serviceName}</span> · <code>{s.method} {s.path}</code>: {s.reason}</div>
                   ))}
                 </div>
               </details>
@@ -120,14 +120,14 @@ export function ContractTestsPanel({
       <Card>
         <CardHeader><CardTitle className="text-base">Runs</CardTitle></CardHeader>
         <CardContent className="pt-0">
-          {runs.length === 0 && <div className="text-sm text-mute">No runs yet.</div>}
-          <div className="divide-y divide-hairline">
+          {runs.length === 0 && <div className="text-sm text-muted-foreground">No runs yet.</div>}
+          <div className="divide-y divide-border/50">
             {runs.map((r) => (
-              <Link key={r.id} href={`/architectures/${architectureId}/regression/${r.id}`} className="flex items-center gap-3 py-2 text-[13px] hover:bg-surface-elevated/30 px-2 -mx-2 rounded">
+              <Link key={r.id} href={`/architectures/${architectureId}/regression/${r.id}`} className="flex items-center gap-3 py-2 text-[13px] hover:bg-muted/30 px-2 -mx-2 rounded">
                 <StatusBadge status={r.status} />
                 <span>{r.passedSteps}/{r.totalSteps} passed</span>
-                {r.failedSteps > 0 && <span className="text-accent-red">{r.failedSteps} failed</span>}
-                <span className="ml-auto text-mute">{r.triggeredBy ?? 'manual'} · {formatRelative(new Date(r.createdAt))}</span>
+                {r.failedSteps > 0 && <span className="text-red-500">{r.failedSteps} failed</span>}
+                <span className="ml-auto text-muted-foreground">{r.triggeredBy ?? 'manual'} · {formatRelative(new Date(r.createdAt))}</span>
               </Link>
             ))}
           </div>

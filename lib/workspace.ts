@@ -2,7 +2,7 @@
 // numbers, open incidents, who's on call, and a recent-activity feed — plus
 // the detail behind a single service drawer.
 
-import { prisma } from './prisma';
+import { prisma, readBatch } from './prisma';
 import { parseJson } from './utils';
 import { buildTopology } from './topology-builder';
 import { computeContractTopology } from './analyze';
@@ -49,7 +49,7 @@ export function mergeActivity(lists: ActivityItem[][], limit = 30): ActivityItem
 const iso = (d: Date | null | undefined) => (d ? d.toISOString() : null);
 
 async function healthStats(filter: { serviceId: string } | { service: { architectureId: string } }) {
-  const [groups, recent] = await Promise.all([
+  const [groups, recent] = await readBatch([
     prisma.healthRecord.groupBy({
       by: ['serviceId', 'status'],
       where: { ...filter, checkedAt: { gte: new Date(Date.now() - DAY) } },
@@ -117,8 +117,8 @@ export async function loadWorkspace(architectureId: string): Promise<WorkspaceDa
   }
 
   const since3d = new Date(Date.now() - 3 * DAY);
-  const [stats, incidentsRaw, events, audits, runs] = await Promise.all([
-    healthStats({ service: { architectureId } }),
+  const stats = await healthStats({ service: { architectureId } });
+  const [incidentsRaw, events, audits, runs] = await readBatch([
     prisma.incident.findMany({
       where: { architectureId, status: { in: OPEN } },
       orderBy: { openedAt: 'desc' },
@@ -285,14 +285,13 @@ export async function loadServiceOverview(serviceId: string, canEdit: boolean): 
   });
   if (!svc) return null;
 
-  const [history, stats, incident, logs] = await Promise.all([
+  const [history, incident] = await readBatch([
     prisma.healthRecord.findMany({
       where: { serviceId },
       orderBy: { checkedAt: 'desc' },
       take: 60,
       select: { status: true, responseTime: true, checkedAt: true, details: true },
     }),
-    healthStats({ serviceId }),
     prisma.incident.findFirst({
       where: { serviceId, status: { in: OPEN } },
       orderBy: { openedAt: 'desc' },
@@ -301,8 +300,9 @@ export async function loadServiceOverview(serviceId: string, canEdit: boolean): 
         remediations: { where: { status: 'opened' }, orderBy: { createdAt: 'desc' }, take: 1, select: { prUrl: true } },
       },
     }),
-    search({ architectureId: svc.architectureId, serviceIds: [serviceId], levels: ['warn', 'error'], since: new Date(Date.now() - DAY), limit: 20 }),
   ]);
+  const stats = await healthStats({ serviceId });
+  const logs = await search({ architectureId: svc.architectureId, serviceIds: [serviceId], levels: ['warn', 'error'], since: new Date(Date.now() - DAY), limit: 20 });
 
   // Latest per-probe result lives in the newest aggregated health record.
   const latest = parseJson<{ results?: Array<{ probeId: string; status: string }> }>(history[0]?.details, {});

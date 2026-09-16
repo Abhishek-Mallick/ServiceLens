@@ -26,7 +26,7 @@ export default async function ArchitecturesPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">Architectures</h1>
-          <p className="text-mute mt-1">Every service mesh you've registered.</p>
+          <p className="text-muted-foreground mt-1">Every service mesh you've registered.</p>
         </div>
         <Button asChild>
           <Link href="/architectures/new"><Plus className="h-4 w-4" /> New architecture</Link>
@@ -40,7 +40,7 @@ export default async function ArchitecturesPage() {
               <Boxes className="h-7 w-7 text-primary" />
             </div>
             <h3 className="text-lg font-semibold">No architectures yet</h3>
-            <p className="text-sm text-mute mt-1 max-w-md">
+            <p className="text-sm text-muted-foreground mt-1 max-w-md">
               Register your first microservice architecture by adding a Git repo per service. ServiceLens will map everything automatically.
             </p>
             <Button asChild className="mt-4"><Link href="/architectures/new">Create architecture</Link></Button>
@@ -61,7 +61,7 @@ export default async function ArchitecturesPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="pt-0">
-                  <div className="flex items-center gap-4 text-sm text-mute">
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     <span className="flex items-center gap-1.5"><GitBranch className="h-3.5 w-3.5" />{a._count.services} services</span>
                     <span>·</span>
                     <span>{a._count.regressionRuns} runs</span>

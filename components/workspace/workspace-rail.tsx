@@ -18,10 +18,10 @@ const KIND_ICON: Record<ActivityKind, React.ComponentType<{ className?: string }
 
 function RailSection({ title, count, children }: { title: string; count?: number; children: React.ReactNode }) {
   return (
-    <section className="space-y-2 border-b border-hairline px-4 py-4 last:border-b-0">
-      <h3 className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.15em] text-mute">
+    <section className="space-y-2 border-b border-border/50 px-4 py-4 last:border-b-0">
+      <h3 className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">
         {title}
-        {count != null && <span className="rounded-full bg-surface-elevated px-1.5 text-[10px] text-body">{count}</span>}
+        {count != null && <span className="rounded-full bg-muted px-1.5 text-[10px] text-foreground/90">{count}</span>}
       </h3>
       {children}
     </section>
@@ -45,45 +45,45 @@ export function WorkspaceRail({
 }) {
   const base = `/architectures/${architectureId}`;
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-y-auto bg-surface-deep">
+    <div className="flex h-full min-h-0 flex-col overflow-y-auto bg-background">
       <RailSection title="Open incidents" count={incidents.length}>
-        {incidents.length === 0 && <div className="text-[13px] text-mute">Nothing open. All quiet.</div>}
+        {incidents.length === 0 && <div className="text-[13px] text-muted-foreground">Nothing open. All quiet.</div>}
         <div className="space-y-2">
           {incidents.slice(0, 8).map((i) => (
-            <Link key={i.id} href={`${base}/incidents/${i.id}`} className="block space-y-1 rounded-md border border-hairline bg-surface-card p-2.5 hover:border-hairline-strong">
+            <Link key={i.id} href={`${base}/incidents/${i.id}`} className="block space-y-1 rounded-md border border-border/50 bg-card p-2.5 hover:border-border">
               <div className="flex items-center gap-2">
                 <SeverityPill severity={i.severity} />
-                <span className="text-[11px] capitalize text-mute">{i.status}</span>
-                <span className="ml-auto text-[11px] text-mute">{formatRelative(new Date(i.openedAt))}</span>
+                <span className="text-[11px] capitalize text-muted-foreground">{i.status}</span>
+                <span className="ml-auto text-[11px] text-muted-foreground">{formatRelative(new Date(i.openedAt))}</span>
               </div>
-              <div className="line-clamp-2 text-[13px] text-ink">{i.title}</div>
+              <div className="line-clamp-2 text-[13px] text-foreground">{i.title}</div>
               {(i.oncall || i.fixPr?.url) && (
-                <div className="flex flex-wrap items-center gap-x-3 text-[11px] text-mute">
+                <div className="flex flex-wrap items-center gap-x-3 text-[11px] text-muted-foreground">
                   {i.oncall && <span className="inline-flex items-center gap-1"><PhoneCall className="h-3 w-3" />{i.oncall.name}</span>}
-                  {i.fixPr?.url && <span className="inline-flex items-center gap-1 text-link"><GitPullRequest className="h-3 w-3" />fix PR {i.fixPr.state ?? ''}</span>}
+                  {i.fixPr?.url && <span className="inline-flex items-center gap-1 text-blue-500"><GitPullRequest className="h-3 w-3" />fix PR {i.fixPr.state ?? ''}</span>}
                 </div>
               )}
             </Link>
           ))}
-          {incidents.length > 8 && <Link href={`${base}/incidents`} className="text-[12px] text-link hover:underline">All {incidents.length} incidents</Link>}
+          {incidents.length > 8 && <Link href={`${base}/incidents`} className="text-[12px] text-blue-500 hover:underline">All {incidents.length} incidents</Link>}
         </div>
       </RailSection>
 
       {!demo && (
         <RailSection title="On call">
           {!oncall.configured ? (
-            <div className="text-[13px] text-mute">
+            <div className="text-[13px] text-muted-foreground">
               No on-call directory yet.{' '}
-              {canOwn && <Link href={`${base}/alerts`} className="text-link hover:underline">Connect your rota sheet</Link>}
+              {canOwn && <Link href={`${base}/alerts`} className="text-blue-500 hover:underline">Connect your rota sheet</Link>}
             </div>
           ) : oncall.people.length === 0 ? (
-            <div className="text-[13px] text-mute">The directory doesn&apos;t cover any service yet.</div>
+            <div className="text-[13px] text-muted-foreground">The directory doesn&apos;t cover any service yet.</div>
           ) : (
             <div className="space-y-2">
               {oncall.people.map((p) => (
                 <div key={p.email}>
-                  <div className="text-[13px] text-ink">{p.name}</div>
-                  <div className="truncate text-[11px] text-mute">{p.services.join(', ')}</div>
+                  <div className="text-[13px] text-foreground">{p.name}</div>
+                  <div className="truncate text-[11px] text-muted-foreground">{p.services.join(', ')}</div>
                 </div>
               ))}
             </div>
@@ -92,16 +92,16 @@ export function WorkspaceRail({
       )}
 
       <RailSection title="Activity">
-        {activity.length === 0 && <div className="text-[13px] text-mute">No activity in the last 3 days.</div>}
+        {activity.length === 0 && <div className="text-[13px] text-muted-foreground">No activity in the last 3 days.</div>}
         <ol className="space-y-2.5">
           {activity.map((a) => {
             const Icon = KIND_ICON[a.kind] ?? Activity;
             const body = (
               <>
-                <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-mute" />
+                <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                 <span className="min-w-0">
-                  <span className="block text-[12px] leading-snug text-body">{a.title}</span>
-                  <span className="block text-[11px] text-mute">
+                  <span className="block text-[12px] leading-snug text-foreground/90">{a.title}</span>
+                  <span className="block text-[11px] text-muted-foreground">
                     {formatRelative(new Date(a.at))}
                     {a.detail ? ` · ${a.detail}` : ''}
                   </span>
@@ -110,7 +110,7 @@ export function WorkspaceRail({
             );
             return (
               <li key={a.id}>
-                {a.href ? <Link href={a.href} className="flex gap-2 hover:[&_span]:text-ink">{body}</Link> : <div className="flex gap-2">{body}</div>}
+                {a.href ? <Link href={a.href} className="flex gap-2 hover:[&_span]:text-foreground">{body}</Link> : <div className="flex gap-2">{body}</div>}
               </li>
             );
           })}

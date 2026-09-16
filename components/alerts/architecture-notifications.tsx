@@ -46,9 +46,9 @@ export function ArchitectureNotifications({
       </CardHeader>
       {!canEdit ? (
         <CardContent className="space-y-1 text-sm">
-          <div><span className="text-mute">Slack:</span> {slackState.configured ? <span className="text-accent-green">connected</span> : 'not connected'}</div>
-          <div><span className="text-mute">Team email:</span> {initial.notificationsEmail || '—'}</div>
-          <p className="text-[11px] text-ash pt-1">Only owners can change notification routing.</p>
+          <div><span className="text-muted-foreground">Slack:</span> {slackState.configured ? <span className="text-emerald-500">connected</span> : 'not connected'}</div>
+          <div><span className="text-muted-foreground">Team email:</span> {initial.notificationsEmail || '—'}</div>
+          <p className="text-[11px] text-muted-foreground pt-1">Only owners can change notification routing.</p>
         </CardContent>
       ) : (
       <CardContent className="space-y-3">
@@ -56,14 +56,14 @@ export function ArchitectureNotifications({
           <Label htmlFor="slack-url">Slack incoming webhook URL</Label>
           {slackState.configured && (
             <div className="flex items-center gap-2 text-[12px]">
-              <span className="text-accent-green">Connected</span>
-              <code className="text-mute">{slackState.masked}</code>
+              <span className="text-emerald-500">Connected</span>
+              <code className="text-muted-foreground">{slackState.masked}</code>
               <Button type="button" size="sm" variant="ghost" disabled={saving} onClick={() => save({ slackWebhookUrl: '' }, 'Slack disconnected')}>Remove</Button>
             </div>
           )}
           <Input id="slack-url" value={slack} onChange={(e) => setSlack(e.target.value)} autoComplete="off"
             placeholder={slackState.configured ? 'Paste a new URL to replace' : 'https://hooks.slack.com/services/T0…'} type="url" />
-          <p className="text-[11px] text-mute">Stored encrypted. Create one at <a href="https://api.slack.com/messaging/webhooks" className="underline" target="_blank" rel="noreferrer">api.slack.com/messaging/webhooks</a>.</p>
+          <p className="text-[11px] text-muted-foreground">Stored encrypted. Create one at <a href="https://api.slack.com/messaging/webhooks" className="underline" target="_blank" rel="noreferrer">api.slack.com/messaging/webhooks</a>.</p>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="email-to">Team email alias (optional, in addition to members)</Label>

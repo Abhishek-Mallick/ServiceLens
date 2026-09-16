@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { prisma } from '@/lib/prisma';
+import { prisma, readBatch } from '@/lib/prisma';
 import { apiKeyAuth, v1Error } from '@/lib/api-keys';
 import { createService, OnboardingError, ServiceInput, updateService } from '@/lib/onboarding';
 import { deriveContractTopology } from '@/lib/analyze';
@@ -17,7 +17,7 @@ export async function GET(req: Request, { params }: { params: { name: string } }
   if (auth instanceof NextResponse) return auth;
   const svc = await findServiceByName(auth.architectureId, decodeURIComponent(params.name));
   if (!svc) return v1Error(404, 'not_found', `No service named "${decodeURIComponent(params.name)}".`);
-  const [full, incidents] = await Promise.all([
+  const [full, incidents] = await readBatch([
     prisma.service.findUnique({ where: { id: svc.id }, include: { contract: true } }),
     prisma.incident.findMany({
       where: { serviceId: svc.id, status: { in: ['open', 'acknowledged', 'mitigated'] } },

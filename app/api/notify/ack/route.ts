@@ -3,6 +3,16 @@ import { prisma } from '@/lib/prisma';
 import { verifyAckToken } from '@/lib/notify/tokens';
 import { ackIncident } from '@/lib/incidents';
 import { colors as c, rounded } from '@/lib/design-tokens';
+
+const pageTheme = {
+  bg: c.card,
+  ink: c.foreground,
+  muted: c.mutedForeground,
+  border: c.border,
+  cardBg: c.card,
+  primary: c.foreground,
+  onPrimary: '#ffffff',
+} as const;
 import { LIMITS, clientIp, rateLimit } from '@/lib/rate-limit';
 
 // Magic-link acknowledge from email.
@@ -24,11 +34,11 @@ const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 function page(title: string, body: string, status = 200) {
   const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex"><title>${esc(title)} · ServiceLens</title>
-<style>body{margin:0;background:${c.canvas};color:${c.ink};font:15px/1.5 system-ui,-apple-system,sans-serif;display:grid;place-items:center;min-height:100vh}
-main{max-width:440px;padding:32px;border:1px solid ${c['hairline-strong']};border-radius:${rounded.lg};background:${c['surface-card']}}
-h1{font-size:22px;font-weight:500;margin:0 0 8px}p{color:${c.charcoal};margin:0 0 20px}
-button,a.btn{display:inline-block;background:${c.primary};color:${c['primary-on']};border:0;border-radius:${rounded.md};padding:10px 16px;font:inherit;font-weight:500;cursor:pointer;text-decoration:none}
-.muted{font-size:12px;color:${c.ash};margin-top:16px}</style></head><body><main>${body}</main></body></html>`;
+<style>body{margin:0;background:${pageTheme.bg};color:${pageTheme.ink};font:15px/1.5 system-ui,-apple-system,sans-serif;display:grid;place-items:center;min-height:100vh}
+main{max-width:440px;padding:32px;border:1px solid ${pageTheme.border};border-radius:${rounded.lg};background:${pageTheme.cardBg}}
+h1{font-size:22px;font-weight:500;margin:0 0 8px}p{color:${pageTheme.muted};margin:0 0 20px}
+button,a.btn{display:inline-block;background:${pageTheme.primary};color:${pageTheme.onPrimary};border:0;border-radius:${rounded.md};padding:10px 16px;font:inherit;font-weight:500;cursor:pointer;text-decoration:none}
+.muted{font-size:12px;color:${pageTheme.muted};margin-top:16px}</style></head><body><main>${body}</main></body></html>`;
   return new NextResponse(html, { status, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' } });
 }
 

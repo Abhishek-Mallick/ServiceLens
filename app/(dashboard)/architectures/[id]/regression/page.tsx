@@ -29,15 +29,13 @@ export default async function RegressionPage({ params }: { params: { id: string 
 
   if (!architecture.demo) {
     const role = await getRole(architecture.id, session.user.id);
-    const [plan, runs] = await Promise.all([
-      loadContractPlan(architecture.id),
-      prisma.regressionRun.findMany({
-        where: { architectureId: architecture.id, simulated: false },
-        orderBy: { createdAt: 'desc' },
-        take: 15,
-        select: { id: true, status: true, totalSteps: true, passedSteps: true, failedSteps: true, triggeredBy: true, createdAt: true, completedAt: true },
-      }),
-    ]);
+    const plan = await loadContractPlan(architecture.id);
+    const runs = await prisma.regressionRun.findMany({
+      where: { architectureId: architecture.id, simulated: false },
+      orderBy: { createdAt: 'desc' },
+      take: 15,
+      select: { id: true, status: true, totalSteps: true, passedSteps: true, failedSteps: true, triggeredBy: true, createdAt: true, completedAt: true },
+    });
     return (
       <div className="p-6 lg:p-8">
         <ContractTestsPanel

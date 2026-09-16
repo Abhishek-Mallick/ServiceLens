@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma, readBatch } from '@/lib/prisma';
 import { requireSession } from '@/lib/auth-helpers';
 import { visibleTo } from '@/lib/access';
 
@@ -13,7 +13,7 @@ export async function GET(req: Request) {
   if (!q) {
     // Empty query: return the user's most-recent architectures + open incidents so the
     // palette has useful navigation suggestions even before they type.
-    const [arch, inc] = await Promise.all([
+    const [arch, inc] = await readBatch([
       prisma.architecture.findMany({
         where: visibleTo(session.user.id),
         orderBy: { updatedAt: 'desc' },
@@ -34,7 +34,7 @@ export async function GET(req: Request) {
     });
   }
 
-  const [arch, svc, inc] = await Promise.all([
+  const [arch, svc, inc] = await readBatch([
     prisma.architecture.findMany({
       where: { ...visibleTo(session.user.id), name: { contains: q, mode: 'insensitive' } },
       take: 6,
