@@ -10,13 +10,19 @@ export async function hasSession(page: Page): Promise<boolean> {
   return !!body?.user;
 }
 
+// The password field's label matches /password/i, but so does the show/hide
+// toggle ("Show password"). Target the input by role + exact name instead.
+export function passwordField(page: Page) {
+  return page.getByRole('textbox', { name: /^password$/i });
+}
+
 // Signs in through the credentials form and returns once the session is real.
 // One retry covers the credentials route still compiling on the first POST.
 export async function signInWithForm(page: Page, email: string, password: string) {
   for (let attempt = 1; attempt <= 2; attempt++) {
     await page.goto('/login');
     await page.getByLabel(/email/i).fill(email);
-    await page.getByLabel(/password/i).fill(password);
+    await passwordField(page).fill(password);
     await page.getByRole('button', { name: /^sign in$/i }).click();
     const ok = await expect
       .poll(() => hasSession(page), { timeout: 30_000, intervals: [500, 1_000, 2_000] })
@@ -40,9 +46,7 @@ export async function loginAsDemo(page: Page) {
 // The seed always creates "E-Commerce Platform" so we navigate via its name.
 export async function openSeededArchitecture(page: Page): Promise<string> {
   await page.goto('/architectures');
-  // The card title is a styled div, not a link — match on the visible text
-  // which is wrapped in an outer <a>.
-  await page.getByText(/e-commerce platform/i).first().click();
+  await page.getByRole('link', { name: /e-commerce platform/i }).click();
   await page.waitForURL(/\/architectures\/[^/]+$/, { timeout: 20_000 });
   const m = page.url().match(/\/architectures\/([^/?#]+)/);
   if (!m) throw new Error(`couldn't parse arch id from ${page.url()}`);

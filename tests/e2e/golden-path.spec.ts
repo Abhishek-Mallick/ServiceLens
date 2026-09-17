@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { hasSession, signInWithForm } from './_helpers';
+import { hasSession, passwordField, signInWithForm } from './_helpers';
 
 // The v1 golden path on a real (non-demo) architecture, end to end:
 // sign up → onboard a repo + deployed URL → dependencies read from code →
@@ -41,7 +41,7 @@ test('golden path: outage → page → RCA → draft fix PR → auto-resolve →
   await page.goto('/register');
   await page.getByLabel('Name').fill('Golden Path');
   await page.getByLabel('Email').fill(email);
-  await page.getByLabel('Password').fill('golden-pass-1');
+  await passwordField(page).fill('golden-pass-1');
   await page.locator('form button[type="submit"]').click();
   await page.waitForURL(/\/(dashboard|login)\/?(\?.*)?$/, { timeout: 30_000 });
   if (!(await hasSession(page))) await signInWithForm(page, email, 'golden-pass-1');
