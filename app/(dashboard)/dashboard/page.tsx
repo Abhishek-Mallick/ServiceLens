@@ -85,7 +85,7 @@ export default async function DashboardHome() {
   return (
     <div>
       <section className={`relative ${glow}`}>
-        <div className="px-6 lg:px-10 pt-14 pb-10 max-w-6xl mx-auto">
+        <div className="px-6 pb-10 pt-14 lg:px-8">
           <div className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground mb-5">
             {firstName ? `Welcome back, ${firstName}` : 'Welcome back'}
           </div>
@@ -134,7 +134,7 @@ export default async function DashboardHome() {
       </section>
 
       {heroGraph && primaryArch && (
-        <section className="px-6 lg:px-10 max-w-6xl mx-auto pb-8">
+        <section className="px-6 pb-8 lg:px-8">
           <div className="flex items-baseline justify-between mb-3">
             <div>
               <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Topology</div>
@@ -154,7 +154,7 @@ export default async function DashboardHome() {
         </section>
       )}
 
-      <section className="px-6 lg:px-10 max-w-6xl mx-auto pb-16 grid gap-6 lg:grid-cols-3">
+      <section className="grid gap-6 px-6 pb-16 lg:grid-cols-3 lg:px-8">
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Zap className="h-4 w-4 text-foreground" /> Recent regression runs</CardTitle>
@@ -208,7 +208,7 @@ export default async function DashboardHome() {
         </Card>
       </section>
 
-      <section className="px-6 lg:px-10 max-w-6xl mx-auto pb-16">
+      <section className="px-6 pb-16 lg:px-8">
         <div className="flex items-baseline justify-between mb-3">
           <h2 className="font-sans text-2xl text-foreground">Architectures</h2>
           <Link href="/architectures" className="text-[12px] text-blue-500 hover:underline">All →</Link>

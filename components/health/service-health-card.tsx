@@ -35,7 +35,7 @@ export function ServiceHealthCard({ service, selected, onClick }: Props) {
     <Card
       onClick={onClick}
       className={cn(
-        'cursor-pointer transition-all',
+        'cursor-pointer transition-all py-0',
         selected ? 'border-primary ring-2 ring-primary/30' : 'hover:border-primary/40'
       )}
     >

@@ -42,11 +42,12 @@ export default async function ServicesListPage({ params, searchParams }: { param
   const ghInstallUrl = showGithub && githubAppConfigured() ? (await installUrl(architecture.id)) ?? null : null;
 
   return (
-    <div className="p-6 lg:p-8 space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 border-b border-border/50 bg-background/95 px-6 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 lg:px-8">
         <h2 className="text-lg font-semibold">Services ({architecture.services.length})</h2>
         {canEdit && <AddServiceButton architectureId={architecture.id} />}
       </div>
+      <div className="space-y-6 px-6 py-6 lg:px-8">
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {architecture.services.map((s) => {
           const produces = parseJson<unknown[]>(s.producesEvents, []).length;
@@ -54,7 +55,7 @@ export default async function ServicesListPage({ params, searchParams }: { param
           const apis = parseJson<unknown[]>(s.exposesApis, []).length;
           return (
             <Link key={s.id} href={`/architectures/${architecture.id}/services/${s.id}`}>
-              <Card className="h-full transition-all hover:border-primary/40 ">
+              <Card className="h-full transition-all hover:border-primary/40 py-0">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <div className="flex items-center gap-2 min-w-0">
@@ -113,6 +114,7 @@ export default async function ServicesListPage({ params, searchParams }: { param
           }))}
         />
       )}
+      </div>
     </div>
   );
 }

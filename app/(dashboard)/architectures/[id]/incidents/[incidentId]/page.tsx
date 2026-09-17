@@ -82,7 +82,7 @@ export default async function IncidentDetailPage({ params }: { params: { id: str
     : null;
 
   return (
-    <div className="p-6 lg:p-8 space-y-6 max-w-5xl">
+    <div className="space-y-6 px-6 py-6 lg:px-8 lg:py-8">
       <Link href={`/architectures/${params.id}/incidents`} className="text-xs text-muted-foreground inline-flex items-center gap-1 hover:text-foreground">
         <ArrowLeft className="h-3 w-3" /> All incidents
       </Link>
@@ -133,9 +133,55 @@ export default async function IncidentDetailPage({ params }: { params: { id: str
           <FixPrPanel incidentId={incident.id} hasRca={!!incident.rcaMarkdown} canEdit={canEdit} />
 
           <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-base">Actions</CardTitle></CardHeader>
+            <CardContent>
+              <IncidentActions incidentId={incident.id} status={incident.status} canEdit={canEdit} />
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-4">
+          <Card className="h-fit">
+            <CardHeader className="pb-2"><CardTitle className="text-base">Details</CardTitle></CardHeader>
+            <CardContent className="space-y-3 pt-0 text-sm">
+              <Field label="Opened">{formatRelative(incident.openedAt)}</Field>
+              {incident.ackedAt && <Field label="Acknowledged">{formatRelative(incident.ackedAt)}</Field>}
+              {incident.resolvedAt && <Field label="Resolved">{formatRelative(incident.resolvedAt)}</Field>}
+              {incident.service && (
+                <Field label="Service">
+                  <Link href={`/architectures/${params.id}/services/${incident.service.id}`} className="text-primary hover:underline">{incident.service.name}</Link>
+                </Field>
+              )}
+              {incident.rule && (
+                <Field label="Rule">
+                  <Link href={`/architectures/${params.id}/alerts`} className="text-primary hover:underline">{incident.rule.name}</Link>
+                </Field>
+              )}
+              {incident.oncall && (
+                <Field label="On-call paged">
+                  {incident.oncall.name} <span className="text-muted-foreground">&lt;{incident.oncall.email}&gt;</span>
+                  {incident.oncall.escalatedAt
+                    ? <div className="mt-0.5 text-[12px] text-yellow-500">Escalated to {incident.oncall.escalationEmail} {formatRelative(incident.oncall.escalatedAt)}</div>
+                    : incident.oncall.escalationEmail && incident.status === 'open'
+                      ? <div className="mt-0.5 text-[12px] text-muted-foreground">Escalates to {incident.oncall.escalationEmail} if not acknowledged</div>
+                      : null}
+                </Field>
+              )}
+              <Field label="Assignee">{incident.assignee ? (incident.assignee.name ?? incident.assignee.email) : '—'}</Field>
+              {incident.resolution && <Field label="Resolution">{incident.resolution}</Field>}
+              {!incident.resolution && incident.resolutionSummary && (
+                <Field label="What happened (recorded automatically)">
+                  <p className="leading-relaxed text-foreground/90" data-testid="resolution-summary">{incident.resolutionSummary}</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">Used as runbook memory for future incidents on this service. Add a note when resolving to replace it.</p>
+                </Field>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="h-fit">
             <CardHeader className="pb-2"><CardTitle className="text-base">Timeline</CardTitle></CardHeader>
             <CardContent className="pt-0">
-              <ol className="relative border-l border-border/50 ml-2 space-y-4">
+              <ol className="relative ml-2 space-y-4 border-l border-border/50">
                 {incident.events.map((ev) => {
                   const Icon = eventIcon[ev.type] ?? AlertCircle;
                   const payload = ev.payload ? parseJson<Record<string, unknown>>(ev.payload, {}) : null;
@@ -144,64 +190,20 @@ export default async function IncidentDetailPage({ params }: { params: { id: str
                   const resolution = payload && typeof payload.resolution === 'string' ? payload.resolution : null;
                   return (
                     <li key={ev.id} className="ml-4">
-                      <span className="absolute -left-[7px] flex h-3.5 w-3.5 items-center justify-center rounded-full bg-background border border-border">
+                      <span className="absolute -left-[7px] flex h-3.5 w-3.5 items-center justify-center rounded-full border border-border bg-background">
                         <Icon className="h-2.5 w-2.5" />
                       </span>
                       <div className="text-xs text-muted-foreground">{formatRelative(ev.at)} {ev.byUser && <>· {ev.byUser.name ?? ev.byUser.email}</>}</div>
                       <div className="text-sm capitalize">{ev.type.replace(/_/g, ' ')}{reason ? ` (${reason})` : ''}</div>
-                      {text && <div className="text-sm text-muted-foreground mt-1 rounded-md border border-border/50 p-2 bg-muted/20">{text}</div>}
-                      {resolution && <div className="text-sm text-muted-foreground mt-1 rounded-md border border-border/50 p-2 bg-muted/20"><span className="text-[10px] uppercase tracking-wide text-muted-foreground">Resolution</span><br />{resolution}</div>}
+                      {text && <div className="mt-1 rounded-md border border-border/50 bg-muted/20 p-2 text-sm text-muted-foreground">{text}</div>}
+                      {resolution && <div className="mt-1 rounded-md border border-border/50 bg-muted/20 p-2 text-sm text-muted-foreground"><span className="text-[10px] uppercase tracking-wide text-muted-foreground">Resolution</span><br />{resolution}</div>}
                     </li>
                   );
                 })}
               </ol>
             </CardContent>
           </Card>
-
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-base">Actions</CardTitle></CardHeader>
-            <CardContent>
-              <IncidentActions incidentId={incident.id} status={incident.status} canEdit={canEdit} />
-            </CardContent>
-          </Card>
         </div>
-
-        <Card className="h-fit">
-          <CardHeader className="pb-2"><CardTitle className="text-base">Details</CardTitle></CardHeader>
-          <CardContent className="pt-0 space-y-3 text-sm">
-            <Field label="Opened">{formatRelative(incident.openedAt)}</Field>
-            {incident.ackedAt && <Field label="Acknowledged">{formatRelative(incident.ackedAt)}</Field>}
-            {incident.resolvedAt && <Field label="Resolved">{formatRelative(incident.resolvedAt)}</Field>}
-            {incident.service && (
-              <Field label="Service">
-                <Link href={`/architectures/${params.id}/services/${incident.service.id}`} className="text-primary hover:underline">{incident.service.name}</Link>
-              </Field>
-            )}
-            {incident.rule && (
-              <Field label="Rule">
-                <Link href={`/architectures/${params.id}/alerts`} className="text-primary hover:underline">{incident.rule.name}</Link>
-              </Field>
-            )}
-            {incident.oncall && (
-              <Field label="On-call paged">
-                {incident.oncall.name} <span className="text-muted-foreground">&lt;{incident.oncall.email}&gt;</span>
-                {incident.oncall.escalatedAt
-                  ? <div className="text-[12px] text-yellow-500 mt-0.5">Escalated to {incident.oncall.escalationEmail} {formatRelative(incident.oncall.escalatedAt)}</div>
-                  : incident.oncall.escalationEmail && incident.status === 'open'
-                    ? <div className="text-[12px] text-muted-foreground mt-0.5">Escalates to {incident.oncall.escalationEmail} if not acknowledged</div>
-                    : null}
-              </Field>
-            )}
-            <Field label="Assignee">{incident.assignee ? (incident.assignee.name ?? incident.assignee.email) : '—'}</Field>
-            {incident.resolution && <Field label="Resolution">{incident.resolution}</Field>}
-            {!incident.resolution && incident.resolutionSummary && (
-              <Field label="What happened (recorded automatically)">
-                <p className="text-foreground/90 leading-relaxed" data-testid="resolution-summary">{incident.resolutionSummary}</p>
-                <p className="text-[11px] text-muted-foreground mt-1">Used as runbook memory for future incidents on this service. Add a note when resolving to replace it.</p>
-              </Field>
-            )}
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

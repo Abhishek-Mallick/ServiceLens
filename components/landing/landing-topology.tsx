@@ -4,7 +4,7 @@ import { buildTopology } from '@/lib/topology-builder';
 import { parseJson } from '@/lib/utils';
 import type { TopologyGraph } from '@/lib/types';
 import { TopologyPreview } from '@/components/dashboard/topology-preview';
-import { Card, CardContent } from '@/components/ui/card';
+import { LandingFlickerCard } from '@/components/landing/landing-flicker-card';
 import { GitBranch, Radar, Search } from 'lucide-react';
 
 const steps = [
@@ -47,9 +47,9 @@ export async function LandingTopology() {
   return (
     <section id="observability" className="border-b border-border/60 px-6 py-20 md:px-8 md:py-28">
       <div className="mx-auto max-w-4xl text-center">
-        <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
+      <h1 className="max-w-4xl text-balance text-4xl font-semibold tracking-tight md:text-6xl font-heading">
           Downstream topology, discovered from your code
-        </h2>
+        </h1>
         <p className="mt-4 text-lg text-muted-foreground">
           No manual diagrams. ServiceLens reads your repositories, resolves every downstream call,
           and renders the live mesh — including the ambiguities.
@@ -72,13 +72,11 @@ export async function LandingTopology() {
 
       <div className="mx-auto mt-12 grid max-w-6xl gap-4 md:grid-cols-3">
         {steps.map((step) => (
-          <Card key={step.title}>
-            <CardContent className="p-6">
-              <step.icon className="size-6 text-muted-foreground" aria-hidden="true" />
-              <h3 className="mt-4 text-lg font-semibold">{step.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{step.body}</p>
-            </CardContent>
-          </Card>
+          <LandingFlickerCard key={step.title}>
+            <step.icon className="size-6 text-muted-foreground" aria-hidden="true" />
+            <h3 className="mt-4 text-lg font-semibold">{step.title}</h3>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{step.body}</p>
+          </LandingFlickerCard>
         ))}
       </div>
 

@@ -19,7 +19,7 @@ export default async function ArchitectureWorkspacePage({ params }: { params: { 
   const role = await getRole(arch.id, session.user.id);
   const data = await loadWorkspace(arch.id);
   return (
-    <div className="h-[calc(100vh-12rem)] min-h-[640px]">
+    <div className="min-h-0 flex-1 overflow-hidden">
       <ArchitectureWorkspace
         initial={data}
         canEdit={atLeast(role, 'editor') && !data.architecture.demo}

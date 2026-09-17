@@ -78,7 +78,7 @@ const GridMotion: FC<GridMotionProps> = ({ items = [], gradientColor = 'black' }
                 const content = combinedItems[rowIndex * 7 + itemIndex];
                 return (
                   <div key={itemIndex} className="relative">
-                    <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[10px] bg-[#111] text-[1.5rem] text-white">
+                    <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[10px] bg-[#111] text-[1.5rem] text-white dark:bg-[#e5e5e5] dark:text-[#111]">
                       {typeof content === 'string' && content.startsWith('http') ? (
                         <div
                           className="absolute left-0 top-0 h-full w-full bg-cover bg-center"

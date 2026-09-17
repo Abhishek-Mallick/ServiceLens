@@ -40,7 +40,7 @@ export function Header({ user }: HeaderProps) {
   }
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b border-border/50 bg-background/70 px-6 backdrop-blur">
+    <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b border-border/50 bg-background/70 px-8 backdrop-blur">
       <nav className="flex items-center gap-1 text-[12px] text-muted-foreground min-w-0">
         {segments.map((seg, i) => {
           const href = '/' + segments.slice(0, i + 1).join('/');

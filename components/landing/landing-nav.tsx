@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { AppLogo } from '@/components/shared/app-logo';
+import { ModeToggle } from '@/components/mode-toggle';
 import { Button } from '@/components/ui/button';
 
 type LandingNavProps = {
@@ -30,6 +31,7 @@ export function LandingNav({ isLoggedIn }: LandingNavProps) {
         </nav> */}
 
         <div className="ml-auto flex items-center gap-2">
+          <ModeToggle />
           <Button asChild variant="ghost" size="sm" className="hidden md:inline-flex">
             <Link href="/login">Login</Link>
           </Button>

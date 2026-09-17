@@ -273,6 +273,7 @@ function MeshGraphInner({
 
   return (
     <ReactFlow
+      className="h-full w-full"
       nodes={nodes}
       edges={edges}
       onNodesChange={onNodesChange}

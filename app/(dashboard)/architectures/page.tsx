@@ -55,7 +55,7 @@ export default async function ArchitecturesPage() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <CardTitle className="truncate group-hover:text-primary transition-colors">{a.name}</CardTitle>
-                      {a.description && <CardDescription className="mt-1 line-clamp-2">{a.description}</CardDescription>}
+                      {a.description && <CardDescription className="mt-1 line-clamp-1">{a.description}</CardDescription>}
                     </div>
                     <StatusBadge status={a.status} />
                   </div>

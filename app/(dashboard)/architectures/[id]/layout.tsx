@@ -37,12 +37,9 @@ export default async function ArchitectureLayout({
   const canEdit = atLeast(await getRole(architecture.id, session.user.id), 'editor');
 
   return (
-    <div className="flex flex-col">
-      <div className="border-b border-border/50 bg-background/50">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="shrink-0 border-b border-border/50 bg-background/50">
         <div className="px-6 lg:px-8 pt-6 pb-4">
-          <Link href="/architectures" className="text-xs text-muted-foreground inline-flex items-center gap-1 mb-3 hover:text-foreground">
-            <ArrowLeft className="h-3 w-3" /> Architectures
-          </Link>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0">
               <div className="flex items-center gap-3">
@@ -77,10 +74,12 @@ export default async function ArchitectureLayout({
               )}
             </div>
           </div>
+          <div className='-ml-3'>
           <ArchitectureTabs architectureId={architecture.id} />
+          </div>
         </div>
       </div>
-      {children}
+      <div className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">{children}</div>
     </div>
   );
 }

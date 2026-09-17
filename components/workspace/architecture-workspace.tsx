@@ -101,9 +101,9 @@ export function ArchitectureWorkspace({ initial, canEdit, canOwn }: { initial: W
   const empty = data.services.length === 0;
 
   return (
-    <div className="grid h-full min-h-0 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px]">
-      <div className="relative flex min-h-[560px] flex-col border-r border-border/50">
-        <div className="flex flex-wrap items-center gap-3 border-b border-border/50 px-4 py-2.5">
+    <div className="grid h-full min-h-0 grid-cols-1 overflow-hidden lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="relative flex min-h-0 flex-col border-r border-border/50">
+        <div className="flex flex-wrap items-center gap-3 border-b border-border/50 px-8 py-2.5">
           <div className="flex items-center gap-3 text-[12px] text-foreground/90">
             {(['healthy', 'degraded', 'down', 'unknown'] as const).map((k) => (
               <span key={k} className="inline-flex items-center gap-1.5" title={k}>
@@ -133,9 +133,9 @@ export function ArchitectureWorkspace({ initial, canEdit, canOwn }: { initial: W
           )}
         </div>
 
-        <div className="relative min-h-0 flex-1">
+        <div className="relative min-h-0 flex-1 overflow-hidden">
           {empty ? (
-            <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
+            <div className="flex h-full min-h-0 flex-col items-center justify-center gap-3 px-6 text-center">
               <h2 className="font-sans text-[36px] leading-none text-foreground">Nothing here yet.</h2>
               <p className="max-w-md text-[14px] text-muted-foreground">Register your services and ServiceLens maps how they call each other from the code, health-checks them, and pages the right person when one breaks.</p>
               {canEdit && <AddServiceButton architectureId={architectureId} />}

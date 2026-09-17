@@ -13,7 +13,7 @@ export default async function SettingsPage() {
   const emailEnabled = !!process.env.RESEND_API_KEY;
 
   return (
-    <div className="p-6 lg:p-8 max-w-3xl space-y-6">
+    <div className="space-y-6 px-6 py-6 lg:px-8 lg:py-8">
       <div>
         <h1 className="text-2xl font-semibold">Settings</h1>
         <p className="text-sm text-muted-foreground mt-1">Workspace configuration.</p>
