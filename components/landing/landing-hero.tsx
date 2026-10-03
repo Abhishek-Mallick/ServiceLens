@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { ArrowRight, Database, Radio } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import GridMotion from '@/components/GridMotion';
+import { Skiper67 } from '@/components/ui/skiper-ui/skiper67';
 
 type LandingHeroProps = {
   ctaHref: string;
@@ -138,7 +139,7 @@ export function LandingHero({ ctaHref }: LandingHeroProps) {
   return (
     <section
       id="platform"
-      className="relative isolate overflow-hidden h-screen flex items-center justify-center -mt-8"
+      className="relative isolate overflow-hidden min-h-screen flex items-center justify-center -mt-8"
     >
       {/* Animated grid backdrop — pointer-driven parallax via gsap. */}
       <div className="pointer-events-none absolute inset-0 -z-10 opacity-40 dark:opacity-30">
@@ -146,27 +147,35 @@ export function LandingHero({ ctaHref }: LandingHeroProps) {
       </div>
       <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-background/40 via-background/80 to-background" />
 
-      <div className="relative mx-auto flex max-w-5xl flex-col items-center gap-8 px-6 py-24 text-center md:py-32">
-        <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/80 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-          New · AI root-cause analysis and draft fix PRs {' '}
-          {/* <Link href={ctaHref} className="underline underline-offset-2 hover:no-underline">
-            Try it now
-          </Link> */}
+      <div className="relative mx-auto grid w-full max-w-7xl items-center gap-12 px-6 py-24 md:py-32 lg:grid-cols-2 lg:gap-8">
+        {/* Left — content */}
+        <div className="flex flex-col items-start gap-6 text-left">
+          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/80 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            New · AI root-cause analysis and draft fix PRs {' '}
+          </div>
+
+          <h1 className="max-w-xl text-balance text-3xl font-semibold tracking-tight md:text-4xl font-heading">
+            Everything we learned from observing production meshes — yours by default
+          </h1>
+
+          <p className="max-w-xl text-balance text-xs text-muted-foreground md:text-sm">
+            One platform for your services, dependencies, and incidents. Map topology from code,
+            monitor every app and datastore, and respond faster without stitching tools together.
+          </p>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Button asChild size="lg">
+              <Link href={ctaHref}>Start building for free</Link>
+            </Button>
+          </div>
         </div>
 
-        <h1 className="max-w-4xl text-balance text-4xl font-semibold tracking-tight md:text-6xl font-heading">
-          Everything we learned from observing production meshes — yours by default
-        </h1>
-
-        <p className="max-w-2xl text-balance text-lg text-muted-foreground md:text-xl">
-          One platform for your services, dependencies, and incidents. Map topology from code,
-          monitor every app and datastore, and respond faster without stitching tools together.
-        </p>
-
-        <Button asChild size="lg">
-          <Link href={ctaHref}>Start building for free</Link>
-        </Button>
+        {/* Right — video */}
+        <div className="relative w-full">
+          <div className="pointer-events-none absolute -inset-4 -z-10 rounded-3xl bg-gradient-to-br from-primary/10 via-transparent to-transparent blur-2xl" />
+          <Skiper67 src="/service-lens.mp4" />
+        </div>
       </div>
     </section>
   );

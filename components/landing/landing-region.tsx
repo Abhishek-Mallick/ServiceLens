@@ -266,7 +266,7 @@ export function LandingRegion() {
         </p>
       </div>
 
-      <div className="mx-auto mt-12 grid max-w-6xl grid-cols-1 gap-4 md:grid-cols-3 md:grid-rows-[22rem_auto_auto]">
+      <div className="mx-auto mt-12 grid max-w-7xl px-6 grid-cols-1 gap-4 md:grid-cols-3 md:grid-rows-[22rem_auto_auto]">
         {columns.map((col) => (
           <LandingFeatureCard key={col.title} mock={col.mock} title={col.title} body={col.body} />
         ))}

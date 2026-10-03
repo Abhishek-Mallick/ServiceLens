@@ -8,7 +8,7 @@ type LandingCtaProps = {
 export function LandingCta({ ctaHref }: LandingCtaProps) {
   return (
     <section id="pricing" className="border-b border-border/60 px-6 py-24 md:px-8 md:py-32">
-      <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 text-center">
+      <div className="mx-auto flex max-w-7xl flex-col items-center gap-6 text-center">
         <h1 className="max-w-4xl text-balance text-4xl font-semibold tracking-tight md:text-6xl font-heading">
           Build for the agent era of operations
         </h1>
