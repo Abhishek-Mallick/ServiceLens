@@ -8,6 +8,11 @@ ServiceLens is a full-stack **observability intelligence platform** for microser
 
 The RCA and fix-PR pipeline is informed by models and investigative patterns trained in a companion [**Incident Triage Environment**](https://github.com/deepraj21/Incident-Triage-Env/tree/feat/incident-triage-env) — an OpenEnv-compliant RL simulator where agents learn production-grade triage under realistic operational constraints.
 
+
+
+https://github.com/user-attachments/assets/6900dd3d-fcb0-4b64-85c7-911ddfd2da3f
+
+
 ---
 
 ## Architecture
