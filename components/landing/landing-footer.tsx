@@ -174,6 +174,18 @@ export function LandingFooter() {
             height={40}
           />
         </a>
+
+        <a
+          href="https://peerlist.io/deeprajbera/project/servicelens"
+          target="_blank"
+          rel="noreferrer"
+        >
+          <img
+            src="https://peerlist.io/api/v1/projects/embed/PRJH9OB8BR66BMQQMF6BAQM6PPO6MR?showUpvote=false&theme=dark"
+            alt="ServiceLens"
+            style={{ width: 'auto', height: 72 }}
+          />
+        </a>
       </div>
     </footer>
   );
