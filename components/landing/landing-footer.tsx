@@ -152,6 +152,19 @@ export function LandingFooter() {
             }}
           />
         </a>
+
+        <a
+          href="https://launchon.it/products/servicelens"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="ServiceLens - Featured on LaunchOnIt"
+        >
+          <img
+            src="https://launchon.it/api/badge/servicelens?theme=dark&size=md&type=featured"
+            alt="ServiceLens - Featured on LaunchOnIt"
+            height={56}
+          />
+        </a>
       </div>
     </footer>
   );
