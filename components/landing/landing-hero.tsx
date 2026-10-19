@@ -221,6 +221,62 @@ export function LandingHero({ ctaHref }: LandingHeroProps) {
                 height={56}
               />
             </a>
+
+            <a
+              href="https://easydofollow.dev/dev-tools/servicelens"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <img
+                src="https://easydofollow.dev/badge/easydofollow-badge-light.svg"
+                alt="Featured on EasyDoFollow"
+                width={188}
+                height={56}
+              />
+            </a>
+
+            <a href="https://launchit.fast" target="_blank" rel="noopener noreferrer">
+              <img
+                src="https://launchit.fast/img/launching.svg"
+                alt="Featured on LaunchIt"
+                height={56}
+              />
+            </a>
+
+            <a href="https://noonlaunch.com/product/servicelens" rel="dofollow">
+              <img
+                src="https://noonlaunch.com/badges/servicelens.svg?theme=dark"
+                alt="Featured on Noonlaunch"
+                width={220}
+                height={60}
+              />
+            </a>
+
+            <a
+              href="https://startupfa.me/s/servicelens?utm_source=servicelens.buildlab.in"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <img
+                src="https://startupfa.me/badges/featured-badge.webp"
+                alt="ServiceLens - Featured on Startup Fame"
+                width={171}
+                height={54}
+              />
+            </a>
+
+            <a
+              href="https://nicklaunches.com/products/servicelens/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <img
+                src="https://nicklaunches.com/badges/featured-dark.png"
+                alt="ServiceLens on Nick Launches"
+                width={244}
+                height={56}
+              />
+            </a>
           </div>
         </div>
 
